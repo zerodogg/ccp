@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
+package CCP;
 # The modules we want to use
 use strict;                             # Make my coding strict
 use warnings;                           # Warn me!
@@ -62,16 +63,16 @@ sub Help {
 	Version;
 	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
 	print "Mandatory options:\n";
-	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
+#	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
 	PrintHelp("-p", "--template", "Define the template configuration file");
 	PrintHelp("-o", "--oldfile", "Define the old configuration file");
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
-	PrintHelp("", "--outputfile", "Output to this file instead of oldfile");
+	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
 	PrintHelp("-h", "--help", "Display this help screen");
 	PrintHelp("", "--version", "Display the version number");
 	PrintHelp("-v", "--verbose", "Be verbose");
-	PrintHelp("", "--veryverbose", "Be very verbose, useful for debugging. Implies -v");
+	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -162,13 +163,13 @@ Help and exit 0 unless @ARGV;
 GetOptions (
 	'version' => sub { Version; exit 0; },
 	'h|help' => sub { Help; exit 0; },
-	'outputfile=s' => \$OutputFile,
+	'f|outputfile=s' => \$OutputFile,
 	'o|oldfile=s' => \$OldFile,
 	'n|newfile=s' => \$NewFile,
 	'p|template=s' => \$TemplateFile,
 	't|type=s' => sub { print "--type ignored, not implemented yet\n"; },
 	'v|verbose' => \$Verbose,
-	'veryverbose' => sub { $Verbose = 1;
+	'V|veryverbose' => sub { $Verbose = 1;
 		$VeryVerbose = 1;
 	},
 ) or Help and die "\n";
