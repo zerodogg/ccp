@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 # Common Configuration Parser version 0.1 ALPHA (!)
+# $Id$
 # Copyright (C) Eskild Hustvedt 2005
 #
 # This program is free software; you can redistribute it and/or
@@ -16,7 +17,6 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id$
 # The modules we want to use
 use strict;                             # Make my coding strict
 use warnings;                           # Warn me!
@@ -166,10 +166,18 @@ GetOptions (
 	},
 ) or Help and die "\n";
 
+# Verify options
 die "No --oldfile supplied\n" unless $OldFile;
 die "No --newfile supplied\n" unless $NewFile;
 die "No --template supplied\n" unless $TemplateFile;
 die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
+# Verify file existance and validity
+die "$OldFile does not exist\n" unless -e $OldFile;
+die "$NewFile does not exist\n" unless -e $NewFile;
+die "$TemplateFile does not exist\n" unless -e $TemplateFile;
+die "$OldFile is not a normal file\n" unless -f $OldFile;
+die "$NewFile is not a normal file\n" unless -f $NewFile;
+die "$TemplateFile is not a normal file\n" unless -f $TemplateFile;
 
 $OutputFile = $OldFile unless $OutputFile;
 
