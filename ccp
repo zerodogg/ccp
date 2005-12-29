@@ -105,12 +105,13 @@ sub LoadFile {
 	foreach (<FILE>) {
 		chomp;
 		s/#.*//;                # Strip comments
-		s/:.*//;		# Strip : comments
-		s/;.*//;		# Strip ; comments
-		s/\[.*//;		# We can't do anything with section headers
-		s/;$//;			# Strip trailing ;
 		s/^\s+//;               # Strip leading whitespace
 		s/\s+$//;               # Strip trailing whitespace
+		s/:.*//;		# Strip : comments
+		s/;.*//;		# Strip ; comments
+		s/\[.*//;		# We can't do anything with section headers so we skip them
+		s/;$//;			# Strip trailing ;
+		s/^\$//;		# Strip leading $
 		s/\"//g;                # Strip quotes
 		s/\'//g;                # Ditto
 		next unless length;	# Empty?
@@ -185,7 +186,10 @@ die "$OldFile is not a normal file\n" unless -f $OldFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
 die "$TemplateFile is not a normal file\n" unless -f $TemplateFile;
 
-$OutputFile = $OldFile unless $OutputFile;
+unless ($OutputFile) {
+	printvv "Using --oldfile ($OldFile) as --outputfile\n";
+	$OutputFile = $OldFile;
+}
 
 printvv "Okay, beginning.\n";
 printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
