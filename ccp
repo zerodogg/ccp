@@ -108,6 +108,7 @@ sub LoadFile {
 		s/:.*//;		# Strip : comments
 		s/;.*//;		# Strip ; comments
 		s/\[.*//;		# We can't do anything with section headers
+		s/;$//;			# Strip trailing ;
 		s/^\s+//;               # Strip leading whitespace
 		s/\s+$//;               # Strip trailing whitespace
 		s/\"//g;                # Strip quotes
@@ -139,8 +140,13 @@ sub OutputFile {
 			s/{CCP::CONFIG::$key}/$Config{$key}/;
 		}
 	}
-	printvv "Opening $OutputFile for writing\n";
+	foreach (@Template) {
+		if (s/{CCP::CONFIG::(.+)}//) {
+			printv "Warning: Option found in template but not in old or newfile: $1\n";
+		}
+	}
 	open(OUTPUTFILE, ">$OutputFile");
+	printv "Writing $OutputFile\n";
 	foreach (@Template) {
 			print OUTPUTFILE "$_";
 	}
@@ -187,4 +193,4 @@ printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
 LoadFile("$NewFile");
 LoadFile("$OldFile");
 OutputFile;
-printnv "done"
+printnv "done\n";
