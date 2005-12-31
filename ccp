@@ -35,7 +35,7 @@ my $Version = "0.1 ALPHA";		# Version number
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
-	$OutputFile,
+	$OutputFile,	$IfExist,
 );	# Scalars
 my (
 	%Config,
@@ -68,6 +68,7 @@ sub Help {
 	PrintHelp("-o", "--oldfile", "Define the old configuration file");
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
+	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
 	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
 	PrintHelp("-h", "--help", "Display this help screen");
 	PrintHelp("", "--version", "Display the version number");
@@ -172,6 +173,7 @@ GetOptions (
 	'V|veryverbose' => sub { $Verbose = 1;
 		$VeryVerbose = 1;
 	},
+	'i|ifexist' => \$IfExist,
 ) or Help and die "\n";
 
 # Verify options
@@ -179,6 +181,11 @@ die "No --oldfile supplied\n" unless $OldFile;
 die "No --newfile supplied\n" unless $NewFile;
 die "No --template supplied\n" unless $TemplateFile;
 die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
+# Verify existance if $NewFile and exit as requested if needed
+if (!-e $NewFile) {
+	exit 0 if $IfExist;
+	die "$NewFile does not exist\n";
+}
 # Verify file existance and validity
 die "$OldFile does not exist\n" unless -e $OldFile;
 die "$NewFile does not exist\n" unless -e $NewFile;
