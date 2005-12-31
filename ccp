@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Common Configuration Parser version 0.1 ALPHA (!)
+# Common Configuration Parser version 0.1 
 # $Id$
 # Copyright (C) Eskild Hustvedt 2005
 #
@@ -29,7 +29,7 @@ use File::Copy;                         # We need to copy files!
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.1 ALPHA";		# Version number
+my $Version = "0.1-CVS";		# Version number
 
 # Declare variables
 my (
