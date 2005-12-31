@@ -61,7 +61,8 @@ sub Help {
 	my $Command = basename($0);
 	print "\n";
 	Version;
-	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
+#	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
+	print "\nUsage: $Command [OPTIONAL OPTIONS] --template [path] --oldfile [path] --newfile [path]\n\n";
 	print "Mandatory options:\n";
 #	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
 	PrintHelp("-p", "--template", "Define the template configuration file");
