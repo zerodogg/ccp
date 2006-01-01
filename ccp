@@ -219,13 +219,12 @@ sub Help {
 	my $Command = basename($0);
 	print "\n";
 	Version;
-#	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
 	print "\nUsage: $Command [OPTIONAL OPTIONS] --oldfile [path] --newfile [path]\n\n";
 	print "Mandatory options:\n";
-#	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
 	PrintHelp("-o", "--oldfile", "Define the old configuration file");
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
+	#PrintHelp("-t", "--type", "Select an alternate configuration filetype, see the docs for info");
 	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
 	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
 	PrintHelp("-p", "--template", "Use the manually created template supplied");
