@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # Common Configuration Parser version 0.1 
 # $Id$
-# Copyright (C) Eskild Hustvedt 2005
+# Copyright (C) Eskild Hustvedt 2005, 2006
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -35,48 +35,14 @@ my $Version = "0.1-CVS";		# Version number
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
-	$OutputFile,	$IfExist,	$ConfigQuoting,
-	$GenTemplate,
+	$OutputFile,	$IfExist,
 );	# Scalars
 my (
 	%Config,
 );	# Hashes
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Help function declerations
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-# The function that actually outputs the help
-# This is just because I'm too lazy to type the printf every time
-# and this function makes it more practical.
-# Syntax is simply: PrintHelp("shortoption", "longoption", "description")
-sub PrintHelp {
-        printf "%-4s %-16s %s\n", "$_[0]", "$_[1]", "$_[2]";
-}
-
-sub Version {
-	print "Common Configuration Parser version $Version\n";
-}
-
-sub Help {
-	my $Command = basename($0);
-	print "\n";
-	Version;
-#	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
-	print "\nUsage: $Command [OPTIONAL OPTIONS] --template [path] --oldfile [path] --newfile [path]\n\n";
-	print "Mandatory options:\n";
-#	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
-	PrintHelp("-p", "--template", "Define the template configuration file");
-	PrintHelp("-o", "--oldfile", "Define the old configuration file");
-	PrintHelp("-n", "--newfile", "Define the new configuration file");
-	print "\nOptional options:\n";
-	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
-	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
-	PrintHelp("-h", "--help", "Display this help screen");
-	PrintHelp("", "--version", "Display the version number");
-	PrintHelp("-v", "--verbose", "Be verbose");
-	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
-}
+my (
+	@Template,
+);	# Arrays
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Verbosity functions
@@ -116,15 +82,12 @@ sub LoadFile {
 		s#^\?>.*##;		# Strip lines beginning with ?> (php closing tag)
 		s/^\s+//;               # Strip leading whitespace
 		s/\s+$//;               # Strip trailing whitespace
+				# FIXME: We should perhaps only strip ^;.* ?
 		s/:.*//;		# Strip : comments
 		s/;.*//;		# Strip ; comments
 		s/\[.*//;		# We can't do anything with section headers so we skip them
 		s/;$//;			# Strip trailing ; (FIXME: Dump?)
 		s/^\$//;		# Strip leading $
-					# TODO: Quote stripping shouldn't be this crude, strip them after key-value has been read and it
-					# matches a set case.
-		s/\"//g;                # Strip quotes (quoting is defined in the template)
-		s/\'//g;                # Ditto
 		next unless length;	# Empty?
 		next unless /=/;	# No "=" in the line means nothing for us to do
 		my ($var, $value) = split(/\s*=\s*/, $_, 2);    # Set the variables
@@ -135,22 +98,65 @@ sub LoadFile {
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Functions to generate a template
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+sub GenerateTemplate {
+	die "\$NewFile not set" unless $NewFile;
+	printvv "Generating template from $NewFile...\n";
+	printvv "Warning: Template generating may not work !\n";
+	printvv "Report problems to https://savannah.nongnu.org/bugs/?group=ccp\n";
+	printvv "\n";
+	open(NEWFILE, "<$NewFile");
+	@Template = <NEWFILE>;
+	close(NEWFILE);
+	foreach (@Template) {
+		my $EOL = "";
+		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Checck for comments and other funstuff that we don't handle
+		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
+		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
+		chomp;						# Remove newlines
+		my $Name = $_;					# Copy $_'s contents to $Name 
+		# Start stripping junk from the line, to figure out the name of the variable
+		$Name =~ s/(.+)\s*=\s*.*/$1/;
+		$Name =~ s/\s*(\$)//;
+		$Name =~ s/\s+//;
+		next unless $Name;
+		# Okay, time to find out the values
+		my $LineContents = $_;				# Copy $_'s contents to $LineContents
+		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
+		# Check if the line ends with ; - in which case we need to append that later
+		if ($LineContents =~ /;\s*$/) {
+			$EOL = ';';
+		}
+		# $LineContents is now the part of $_ we want to replace
+		s/\Q$LineContents\E/{CCP::CONFIG::$Name}$EOL\n/;
+		printvv "Read setting \"$Name\"\n";
+	}
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Functions for outputting the file
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 sub OutputFile {
 	die "\$OutputFile not set" unless $OutputFile;
-	die "\$TemplateFile not set" unless $TemplateFile;
-	printv "Loading template ($TemplateFile)\n";
-	printvv "Opening $TemplateFile\n";
-	open(TEMPLATE, "<$TemplateFile");
-	my @Template = <TEMPLATE>;
-	close(TEMPLATE);
+	# Find out which method to use for the template:
+	if ($TemplateFile) {	# Use the already generated $TemplateFile
+		printv "Loading template ($TemplateFile)\n";
+		printvv "Opening $TemplateFile\n";
+		open(TEMPLATE, "<$TemplateFile");
+		@Template = <TEMPLATE>;
+		close(TEMPLATE);
+	} else {		# Use a template auto-generated on-the-fly
+		printv "Using on-the-fly template generation\n";
+		GenerateTemplate;
+	}
 	printv "Merging settings into $OutputFile\n";
 	foreach my $key (keys %Config) {
 		printvv "Exchanging {CCP::CONFIG::$key} in template with $Config{$key}\n";
 		foreach (@Template) {
 			s/{CCP::CONFIG::$key}/$Config{$key}/;
+			# TODO: Delete the key here? A key *shouldn't* be more than one place anyway
 		}
 	}
 	foreach (@Template) {
@@ -168,65 +174,40 @@ sub OutputFile {
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Functions to generate a template
+# Help function declerations
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-sub GenerateTemplate {
-	die "\$NewFile not set" unless $NewFile;
-	printv "Generating template from $NewFile...\n";
-	printvv "NOTICE: This isn't implemented fully yet, it'll just finish then exit.\n";
-	printvv "Warning: Template generating may not work !\n";
-	printvv "Report problems to https://savannah.nongnu.org/bugs/?group=ccp\n";
-	printvv "\n";
-	open(NEWFILE, "<$NewFile");
-	my @NewFile = <NEWFILE>;
-	close(NEWFILE);
-	foreach (@NewFile) {
-		my ( $LineQuotes,	$EOL );
-		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Checck for comments and other funstuff that we don't handle
-		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
-		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
-		my $Name = $_;	# Copy $_'s contents to $Line for parsing
-		chomp($Name);
-		# Start stripping junk from the line, to figure out the name of the variable
-		$Name =~ s/(.+)\s*=\s*.*/$1/;
-		$Name =~ s/\s*(\$)//;
-		$Name =~ s/\s+//;
-		next unless $Name;
-		# Okay, we've got a name, now we need to try to figure out which quotes to use
-		# If $ConfigQuoting is true then there is no need because the user has told us
-		unless ($ConfigQuoting) {
-			# " quotes?
-			if (/.*".*".*/) {
-				$LineQuotes = "\"";
-			} # ' quotes ?
-			elsif (/.*'.*'.*/) {
-				$LineQuotes = "'";
-			} # Hrm, okay, no quotes
-			else {
-				$LineQuotes = "";
-			}
-		} else {
-			$LineQuotes = $ConfigQuoting;
-		}
-		# Quoting found, now lets find out the values
-		my $LineContents = $_;
-		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
-		# Check if the line ends with ; - in which case we need to append that later
-		if ($LineContents =~ /;\s*$/) {
-			$EOL = ';';
-		}
-		# Check for quotes, in theory it should begin and end with quotes for us to add it
-		unless ($LineContents =~ /^$LineQuotes.*$LineQuotes;?/) {
-			# Drop LineQuotes
-			$LineQuotes = "";
-		}
-		# $LineContents is now the part of $_ we want to replace
-		s/\Q$LineContents\E/${LineQuotes}{CCP::CONFIG::$Name}$LineQuotes$EOL\n/;
-#		printvv "Found line named $Name\n";
-		chomp;
-		chomp($LineContents);
-		printvv "$_ || $LineContents || $Name\n";
-	}
+
+# The function that actually outputs the help
+# This is just because I'm too lazy to type the printf every time
+# and this function makes it more practical.
+# Syntax is simply: PrintHelp("shortoption", "longoption", "description")
+sub PrintHelp {
+        printf "%-4s %-16s %s\n", "$_[0]", "$_[1]", "$_[2]";
+}
+
+sub Version {
+	print "Common Configuration Parser version $Version\n";
+}
+
+sub Help {
+	my $Command = basename($0);
+	print "\n";
+	Version;
+#	print "\nUsage: $Command [OPTIONAL OPTIONS] --type [TYPE] --template [path] --oldfile [path] --newfile [path]\n\n";
+	print "\nUsage: $Command [OPTIONAL OPTIONS] --oldfile [path] --newfile [path]\n\n";
+	print "Mandatory options:\n";
+#	PrintHelp("-t", "--type", "Select the configuration filetype, see the documentation for info");
+	PrintHelp("-o", "--oldfile", "Define the old configuration file");
+	PrintHelp("-n", "--newfile", "Define the new configuration file");
+	print "\nOptional options:\n";
+	PrintHelp("-p", "--template", "Use the manually created template supplied");
+	PrintHelp("", "", "(don't generate template on-the-fly)");
+	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
+	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
+	PrintHelp("-h", "--help", "Display this help screen");
+	PrintHelp("", "--version", "Display the version number");
+	PrintHelp("-v", "--verbose", "Be verbose");
+	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -246,19 +227,11 @@ GetOptions (
 		$VeryVerbose = 1;
 	},
 	'i|ifexist' => \$IfExist,
-	'gentemplate' => \$GenTemplate,
 ) or Help and die "\n";
 
 # Verify options
 die "No --oldfile supplied\n" unless $OldFile;
 die "No --newfile supplied\n" unless $NewFile;
-if ($GenTemplate) {
-	$Verbose = 1;
-	$VeryVerbose = 1;
-	GenerateTemplate;
-	exit 0;
-}
-die "No --template supplied\n" unless $TemplateFile;
 die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
 # Verify existance if $NewFile and exit as requested if needed
 if (!-e $NewFile) {
@@ -268,19 +241,32 @@ if (!-e $NewFile) {
 # Verify file existance and validity
 die "$OldFile does not exist\n" unless -e $OldFile;
 die "$NewFile does not exist\n" unless -e $NewFile;
-die "$TemplateFile does not exist\n" unless -e $TemplateFile;
 die "$OldFile is not a normal file\n" unless -f $OldFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
-die "$TemplateFile is not a normal file\n" unless -f $TemplateFile;
 die "$OldFile is not readable by me\n" unless -r $OldFile;
 die "$NewFile is not readable by me\n" unless -r $NewFile;
-die "$TemplateFile is not readable by me\n" unless -r $TemplateFile;
+
+# Test the template file if supplied
+if ($TemplateFile) {
+	die "$TemplateFile does not exist\n" unless -e $TemplateFile;
+	die "$TemplateFile is not a normal file\n" unless -f $TemplateFile;
+	die "$TemplateFile is not readable by me\n" unless -r $TemplateFile;
+}
 
 unless ($OutputFile) {
 	printvv "Using --oldfile ($OldFile) as --outputfile\n";
 	$OutputFile = $OldFile;
 }
 
+if ( -e $OutputFile ) {
+	die "I can't write to \"$OutputFile\"\n" unless -w $OutputFile;
+} else {
+	my $TestBase = dirname($OutputFile);
+	if ($OutputFile eq $TestBase) {
+		$TestBase = "./";
+	}
+	die "I can't write to the directory \"$TestBase\"\n" unless -w $TestBase;
+}
 
 printvv "Okay, beginning.\n";
 printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
