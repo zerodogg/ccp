@@ -10,5 +10,6 @@ Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 - Split out default type into a --type
 - Add --backup (copies --oldfile($OldFile) to $OldFile.ccpcopy (or similar)
 	if --outputfile was not supplied)
+- Add the ability to add options in the old file but not the template.
 
 $Id$

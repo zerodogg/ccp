@@ -35,7 +35,8 @@ my $Version = "0.1-CVS";		# Version number
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
-	$OutputFile,	$IfExist,
+	$OutputFile,	$IfExist,	$ConfigQuoting,
+	$GenTemplate,
 );	# Scalars
 my (
 	%Config,
@@ -107,17 +108,25 @@ sub LoadFile {
 	# Parse and put into the hash
 	foreach (<FILE>) {
 		chomp;
-		s/#.*//;                # Strip comments
+		s/#.*//;                # Strip "#" comments
+		s#^/\*.*##;		# Strip "/*" comments
+		s#^\s*\*.*##;		# Strip "whitespace *" comments
+		s#^\s*\*/.*##;		# Strip "whitespace */" comment endings
+		s#^<.*##;		# Strip lines beginning with < (tags, php config files - this type doesn't support XML configs anyway)
+		s#^\?>.*##;		# Strip lines beginning with ?> (php closing tag)
 		s/^\s+//;               # Strip leading whitespace
 		s/\s+$//;               # Strip trailing whitespace
 		s/:.*//;		# Strip : comments
 		s/;.*//;		# Strip ; comments
 		s/\[.*//;		# We can't do anything with section headers so we skip them
-		s/;$//;			# Strip trailing ;
+		s/;$//;			# Strip trailing ; (FIXME: Dump?)
 		s/^\$//;		# Strip leading $
-		s/\"//g;                # Strip quotes
+					# TODO: Quote stripping shouldn't be this crude, strip them after key-value has been read and it
+					# matches a set case.
+		s/\"//g;                # Strip quotes (quoting is defined in the template)
 		s/\'//g;                # Ditto
 		next unless length;	# Empty?
+		next unless /=/;	# No "=" in the line means nothing for us to do
 		my ($var, $value) = split(/\s*=\s*/, $_, 2);    # Set the variables
 		printvv "Read key value pair: \"$var\" = \"$value\"\n";
 		$Config{$var} = $value;
@@ -159,6 +168,68 @@ sub OutputFile {
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Functions to generate a template
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+sub GenerateTemplate {
+	die "\$NewFile not set" unless $NewFile;
+	printv "Generating template from $NewFile...\n";
+	printvv "NOTICE: This isn't implemented fully yet, it'll just finish then exit.\n";
+	printvv "Warning: Template generating may not work !\n";
+	printvv "Report problems to https://savannah.nongnu.org/bugs/?group=ccp\n";
+	printvv "\n";
+	open(NEWFILE, "<$NewFile");
+	my @NewFile = <NEWFILE>;
+	close(NEWFILE);
+	foreach (@NewFile) {
+		my ( $LineQuotes,	$EOL );
+		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Checck for comments and other funstuff that we don't handle
+		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
+		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
+		my $Name = $_;	# Copy $_'s contents to $Line for parsing
+		chomp($Name);
+		# Start stripping junk from the line, to figure out the name of the variable
+		$Name =~ s/(.+)\s*=\s*.*/$1/;
+		$Name =~ s/\s*(\$)//;
+		$Name =~ s/\s+//;
+		next unless $Name;
+		# Okay, we've got a name, now we need to try to figure out which quotes to use
+		# If $ConfigQuoting is true then there is no need because the user has told us
+		unless ($ConfigQuoting) {
+			# " quotes?
+			if (/.*".*".*/) {
+				$LineQuotes = "\"";
+			} # ' quotes ?
+			elsif (/.*'.*'.*/) {
+				$LineQuotes = "'";
+			} # Hrm, okay, no quotes
+			else {
+				$LineQuotes = "";
+			}
+		} else {
+			$LineQuotes = $ConfigQuoting;
+		}
+		# Quoting found, now lets find out the values
+		my $LineContents = $_;
+		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
+		# Check if the line ends with ; - in which case we need to append that later
+		if ($LineContents =~ /;\s*$/) {
+			$EOL = ';';
+		}
+		# Check for quotes, in theory it should begin and end with quotes for us to add it
+		unless ($LineContents =~ /^$LineQuotes.*$LineQuotes;?/) {
+			# Drop LineQuotes
+			$LineQuotes = "";
+		}
+		# $LineContents is now the part of $_ we want to replace
+		s/\Q$LineContents\E/${LineQuotes}{CCP::CONFIG::$Name}$LineQuotes$EOL\n/;
+#		printvv "Found line named $Name\n";
+		chomp;
+		chomp($LineContents);
+		printvv "$_ || $LineContents || $Name\n";
+	}
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Commandline parameter parsing
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Help and exit 0 unless @ARGV;
@@ -175,11 +246,18 @@ GetOptions (
 		$VeryVerbose = 1;
 	},
 	'i|ifexist' => \$IfExist,
+	'gentemplate' => \$GenTemplate,
 ) or Help and die "\n";
 
 # Verify options
 die "No --oldfile supplied\n" unless $OldFile;
 die "No --newfile supplied\n" unless $NewFile;
+if ($GenTemplate) {
+	$Verbose = 1;
+	$VeryVerbose = 1;
+	GenerateTemplate;
+	exit 0;
+}
 die "No --template supplied\n" unless $TemplateFile;
 die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
 # Verify existance if $NewFile and exit as requested if needed
@@ -194,11 +272,15 @@ die "$TemplateFile does not exist\n" unless -e $TemplateFile;
 die "$OldFile is not a normal file\n" unless -f $OldFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
 die "$TemplateFile is not a normal file\n" unless -f $TemplateFile;
+die "$OldFile is not readable by me\n" unless -r $OldFile;
+die "$NewFile is not readable by me\n" unless -r $NewFile;
+die "$TemplateFile is not readable by me\n" unless -r $TemplateFile;
 
 unless ($OutputFile) {
 	printvv "Using --oldfile ($OldFile) as --outputfile\n";
 	$OutputFile = $OldFile;
 }
+
 
 printvv "Okay, beginning.\n";
 printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
