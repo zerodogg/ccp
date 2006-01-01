@@ -35,7 +35,7 @@ my $Version = "0.1-CVS";		# Version number
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
-	$OutputFile,	$IfExist,
+	$OutputFile,	$IfExist,	$WriteTemplateTo
 );	# Scalars
 my (
 	%Config,
@@ -102,7 +102,7 @@ sub LoadFile {
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 sub GenerateTemplate {
 	die "\$NewFile not set" unless $NewFile;
-	printvv "Generating template from $NewFile...\n";
+	printv "Generating template from $NewFile...\n";
 	printvv "Warning: Template generating may not work !\n";
 	printvv "Report problems to https://savannah.nongnu.org/bugs/?group=ccp\n";
 	printvv "\n";
@@ -129,9 +129,36 @@ sub GenerateTemplate {
 			$EOL = ';';
 		}
 		# $LineContents is now the part of $_ we want to replace
-		s/\Q$LineContents\E/{CCP::CONFIG::$Name}$EOL\n/;
+		s/(.*=\s*)\Q$LineContents\E/${1}{CCP::CONFIG::$Name}$EOL\n/;
 		printvv "Read setting \"$Name\"\n";
 	}
+}
+
+# This function just outputs the template to a file instead of
+# actually merging files.
+sub WriteTemplate {
+	# First, verify $WriteTemplateTo
+	if ( -e $WriteTemplateTo ) {
+		die "I can't write to \"$WriteTemplateTo\"\n" unless -w $WriteTemplateTo;
+	} else {
+		my $TestBase = dirname($WriteTemplateTo);
+		if ($WriteTemplateTo eq $TestBase) {
+			$TestBase = "./";
+		}
+		die "I can't write to the directory \"$TestBase\"\n" unless -w $TestBase;
+	}
+	printnv "Creating template from \"$NewFile\"... ";
+	# Now, create the template
+	GenerateTemplate;
+	# Now, write the template
+	printnv "Writing to \"$WriteTemplateTo\"... ";
+	printv "Writing template to \"$WriteTemplateTo\"\n";
+	open(TEMPLATEOUT, ">$WriteTemplateTo");
+	foreach (@Template) {
+		print TEMPLATEOUT $_;
+	}
+	close(TEMPLATEOUT);
+	printnv "Done\n";
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -148,7 +175,6 @@ sub OutputFile {
 		@Template = <TEMPLATE>;
 		close(TEMPLATE);
 	} else {		# Use a template auto-generated on-the-fly
-		printv "Using on-the-fly template generation\n";
 		GenerateTemplate;
 	}
 	printv "Merging settings into $OutputFile\n";
@@ -200,6 +226,8 @@ sub Help {
 	PrintHelp("-o", "--oldfile", "Define the old configuration file");
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
+	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
+	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
 	PrintHelp("-p", "--template", "Use the manually created template supplied");
 	PrintHelp("", "", "(don't generate template on-the-fly)");
 	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
@@ -227,24 +255,37 @@ GetOptions (
 		$VeryVerbose = 1;
 	},
 	'i|ifexist' => \$IfExist,
+	'writetemplate=s' => \$WriteTemplateTo,
 ) or Help and die "\n";
 
-# Verify options
-die "No --oldfile supplied\n" unless $OldFile;
+# We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
-die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
+
 # Verify existance if $NewFile and exit as requested if needed
 if (!-e $NewFile) {
 	exit 0 if $IfExist;
 	die "$NewFile does not exist\n";
 }
-# Verify file existance and validity
-die "$OldFile does not exist\n" unless -e $OldFile;
+
+# Verify newfile
 die "$NewFile does not exist\n" unless -e $NewFile;
-die "$OldFile is not a normal file\n" unless -f $OldFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
-die "$OldFile is not readable by me\n" unless -r $OldFile;
 die "$NewFile is not readable by me\n" unless -r $NewFile;
+
+# If $WriteTemplateTo is set to something then we should just run WriteTemplate
+# and then exit
+if ($WriteTemplateTo) {
+	WriteTemplate;
+	exit 0;
+}
+
+# Verify oldfile
+die "No --oldfile supplied\n" unless $OldFile;
+die "$OldFile does not exist\n" unless -e $OldFile;
+die "$OldFile is not a normal file\n" unless -f $OldFile;
+die "$OldFile is not readable by me\n" unless -r $OldFile;
+
+die "\"$OldFile\" and \"$NewFile\" is the same file!\n" if $NewFile eq $OldFile;
 
 # Test the template file if supplied
 if ($TemplateFile) {
@@ -269,7 +310,11 @@ if ( -e $OutputFile ) {
 }
 
 printvv "Okay, beginning.\n";
-printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
+unless ($OutputFile eq $OldFile) {
+	printnv "Merging changes between \"$OldFile\" and \"$NewFile\" into \"$OutputFile\"...";
+} else {
+	printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
+}
 
 LoadFile("$NewFile");
 LoadFile("$OldFile");
