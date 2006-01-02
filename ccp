@@ -19,13 +19,13 @@
 #
 package CCP;
 # The modules we want to use
-use strict;                             # Make my coding strict
-use warnings;                           # Warn me!
-use Fatal qw/ open chdir mkdir /;       # So I don't have to type "or die" too much :)
-use File::Basename;                     # Needed to find out our directory and name
-use Cwd;                                # Needed for getcwd
-use Getopt::Long;                       # Commandline parsing
-use File::Copy;                         # We need to copy files!
+use strict;				# Make my coding strict
+use warnings;				# Warn me!
+use Fatal qw/ open /;			# So I don't have to type "or die" too much :)
+use File::Basename;			# Needed to find out our directory and name
+use Cwd;				# Needed for getcwd
+use Getopt::Long;			# Commandline parsing
+use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
@@ -35,7 +35,8 @@ my $Version = "0.1-CVS";		# Version number
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
-	$OutputFile,	$IfExist,	$WriteTemplateTo
+	$OutputFile,	$IfExist,	$WriteTemplateTo,
+	$WriteBackup,	$NoOrphans,	$DeleteNewfile
 );	# Scalars
 my (
 	%Config,
@@ -86,7 +87,7 @@ sub LoadFile {
 		s/:.*//;		# Strip : comments
 		s/;.*//;		# Strip ; comments
 		s/\[.*//;		# We can't do anything with section headers so we skip them
-		s/;$//;			# Strip trailing ; (FIXME: Dump?)
+		s/;$//;			# Strip trailing ; (FIXME: Dump? Already stripped further up)
 		s/^\$//;		# Strip leading $
 		next unless length;	# Empty?
 		next unless /=/;	# No "=" in the line means nothing for us to do
@@ -103,15 +104,12 @@ sub LoadFile {
 sub GenerateTemplate {
 	die "\$NewFile not set" unless $NewFile;
 	printv "Generating template from $NewFile...\n";
-	printvv "Warning: Template generating may not work !\n";
-	printvv "Report problems to https://savannah.nongnu.org/bugs/?group=ccp\n";
-	printvv "\n";
 	open(NEWFILE, "<$NewFile");
 	@Template = <NEWFILE>;
 	close(NEWFILE);
 	foreach (@Template) {
 		my $EOL = "";
-		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Checck for comments and other funstuff that we don't handle
+		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Check for comments and other funstuff that we don't handle
 		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
 		chomp;						# Remove newlines
@@ -119,7 +117,7 @@ sub GenerateTemplate {
 		# Start stripping junk from the line, to figure out the name of the variable
 		$Name =~ s/(.+)\s*=\s*.*/$1/;
 		$Name =~ s/\s*(\$)//;
-		$Name =~ s/\s+//;
+		$Name =~ s/\s+//g;
 		next unless $Name;
 		# Okay, time to find out the values
 		my $LineContents = $_;				# Copy $_'s contents to $LineContents
@@ -167,6 +165,7 @@ sub WriteTemplate {
 
 sub OutputFile {
 	die "\$OutputFile not set" unless $OutputFile;
+	my $OrphansFound;
 	# Find out which method to use for the template:
 	if ($TemplateFile) {	# Use the already generated $TemplateFile
 		printv "Loading template ($TemplateFile)\n";
@@ -178,25 +177,67 @@ sub OutputFile {
 		GenerateTemplate;
 	}
 	printv "Merging settings into $OutputFile\n";
+	# Merge the settings into the template
 	foreach my $key (keys %Config) {
 		printvv "Exchanging {CCP::CONFIG::$key} in template with $Config{$key}\n";
 		foreach (@Template) {
-			s/{CCP::CONFIG::$key}/$Config{$key}/;
-			# TODO: Delete the key here? A key *shouldn't* be more than one place anyway
+			if (s/{CCP::CONFIG::$key}/$Config{$key}/) {
+				# If we replaced something then we delete the key.
+				# A key should never be used more than once, you'll need an ini-type for that to work.
+				delete($Config{$key});
+				last;
+			}
 		}
 	}
+	# Remove options that are in the template but not in any of the other files.
+	# Shouldn't happen with auto-generated templates (but it does)
 	foreach (@Template) {
 		if (s/{CCP::CONFIG::(.+)}//) {
-			printv "Warning: Option found in template but not in old or newfile: $1\n";
+			printv "Warning: Option found in template but not in oldfile or newfile: $1\n";
 		}
 	}
+	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
+	if ($Verbose or $NoOrphans) {
+		foreach (keys %Config) {
+			if ($TemplateFile) {
+				printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $_\n";
+			} else {
+				printv "Warning: Orphaned opton (found in oldfile but not in the newfile): $_\n";
+			}
+			$OrphansFound = 1;
+		}
+		if ($OrphansFound and $NoOrphans) {
+			printnv "failed - orphaned options detected.\n";
+			printv "Exiting as requested\n";
+			exit 0;
+		}
+	}
+	# Backup
+	if ($WriteBackup) {
+		if (-e $OutputFile) {
+			copy($OutputFile, $WriteBackup);
+			printv "Backed up \"$OutputFile\" to \"$WriteBackup\"\n";
+		} else {
+			printvv "I won't back up \"$OutputFile\", it doesn't exist so theres nothing to backup.\n";
+		}
+	}
+	# Write it out
 	open(OUTPUTFILE, ">$OutputFile");
 	printv "Writing $OutputFile\n";
 	foreach (@Template) {
 			print OUTPUTFILE "$_";
 	}
 	close(OUTPUTFILE);
-	printvv "Okay, written\n"
+	printvv "Okay, written\n";
+	# Check if we should delete $NewFile
+	if ($DeleteNewfile) {
+		if (-w $NewFile) {
+			printv "Deleting $NewFile\n";
+			unlink($NewFile) or printv "FAILED!: $!";
+		} else {
+			printvv "User requested that I should delete \"$NewFile\" but I can't write to it, ignoring request.\n";
+		}
+	}
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -225,16 +266,22 @@ sub Help {
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
 	#PrintHelp("-t", "--type", "Select an alternate configuration filetype, see the docs for info");
-	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
-	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
-	PrintHelp("-p", "--template", "Use the manually created template supplied");
-	PrintHelp("", "", "(don't generate template on-the-fly)");
+	PrintHelp("-b", "--backup", "Backup --oldfile (or --outputfile) to filename.ccpbackup");
+	PrintHelp("","", "(or to the file supplied) before writing the upgraded config file");
+	PrintHelp("", "--delete", "Delete --newfile if it is writeable by me and the configuration");
+	PrintHelp("", "", "file is upgraded successfully");
 	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
+	PrintHelp("", "--noorphans", "Exit if orphaned options are detected");
+	PrintHelp("", "", "(see manpage for more information");
 	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
 	PrintHelp("-h", "--help", "Display this help screen");
 	PrintHelp("", "--version", "Display the version number");
 	PrintHelp("-v", "--verbose", "Be verbose");
 	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
+	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
+	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
+	PrintHelp("-p", "--template", "Use the manually created template supplied");
+	PrintHelp("", "", "(don't generate template on-the-fly)");
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -255,8 +302,10 @@ GetOptions (
 	},
 	'i|ifexist' => \$IfExist,
 	'writetemplate=s' => \$WriteTemplateTo,
-) or Help and die "\n";
-
+	'b|backup:s' => \$WriteBackup,
+	'noorphans' => \$NoOrphans,
+	'delete' => \$DeleteNewfile,
+) or die "Run ", basename($0), " --help for more information\n";
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
 
@@ -293,11 +342,13 @@ if ($TemplateFile) {
 	die "$TemplateFile is not readable by me\n" unless -r $TemplateFile;
 }
 
+# Check if we got --outputfile, if we didn't then use --oldfile
 unless ($OutputFile) {
 	printvv "Using --oldfile ($OldFile) as --outputfile\n";
 	$OutputFile = $OldFile;
 }
 
+# Verify that we can write to $OutputFile
 if ( -e $OutputFile ) {
 	die "I can't write to \"$OutputFile\"\n" unless -w $OutputFile;
 } else {
@@ -308,6 +359,25 @@ if ( -e $OutputFile ) {
 	die "I can't write to the directory \"$TestBase\"\n" unless -w $TestBase;
 }
 
+# Test if we where suppose to write a backup
+if (defined($WriteBackup)) {
+	# We where, so let's see if the user has already told us where to write it to
+	if ($WriteBackup eq "" ) {	# User didn't tell us
+		$WriteBackup = "$OutputFile.ccpbackup";
+		printvv "Using \"$WriteBackup\" as backup target\n";
+	}
+	# Make sure we can write to the file
+	if (-e $WriteBackup) {
+		die "I can't write the backup to \"$WriteBackup\"\n" unless -w $WriteBackup;
+	} else {
+		my $TestBase = dirname($WriteBackup);
+		if ($WriteBackup eq $TestBase) {
+			$TestBase = "./";
+		}
+		die "I can't write to the directory \"$TestBase\"\n" unless -w $TestBase;
+	}
+}
+
 printvv "Okay, beginning.\n";
 unless ($OutputFile eq $OldFile) {
 	printnv "Merging changes between \"$OldFile\" and \"$NewFile\" into \"$OutputFile\"...";
@@ -315,7 +385,7 @@ unless ($OutputFile eq $OldFile) {
 	printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
 }
 
-LoadFile("$NewFile");
-LoadFile("$OldFile");
+LoadFile($NewFile);
+LoadFile($OldFile);
 OutputFile;
 printnv "done\n";
