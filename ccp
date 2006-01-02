@@ -29,7 +29,7 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.1-CVS";		# Version number
+my $Version = "0.1";			# Version number
 
 # Declare variables
 my (
@@ -120,7 +120,7 @@ sub GenerateTemplate {
 		$Name =~ s/\s+//g;
 		next unless $Name;
 		# Don't do anything if Name exists in %IgnoreOptions
-		$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; #if $IgnoreOptions{$Name};
+		$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
 		# Okay, time to find out the values
 		my $LineContents = $_;				# Copy $_'s contents to $LineContents
 		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
@@ -269,7 +269,6 @@ sub Help {
 	PrintHelp("-o", "--oldfile", "Define the old configuration file");
 	PrintHelp("-n", "--newfile", "Define the new configuration file");
 	print "\nOptional options:\n";
-	#PrintHelp("-t", "--type", "Select an alternate configuration filetype, see the docs for info");
 	PrintHelp("-b", "--backup", "Backup --oldfile (or --outputfile) to filename.ccpbackup");
 	PrintHelp("","", "(or to the file supplied) before writing the upgraded config file");
 	PrintHelp("-d", "--delete", "Delete --newfile if it is writeable by me and the configuration");
