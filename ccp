@@ -200,13 +200,15 @@ sub OutputFile {
 	}
 	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
 	if ($Verbose or $NoOrphans) {
-		foreach (keys %Config) {
-			if ($TemplateFile) {
-				printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $_\n";
-			} else {
-				printv "Warning: Orphaned opton (found in oldfile but not in the newfile): $_\n";
+		foreach my $key (keys %Config) {
+			unless (grep $_ eq $key, @IgnoreOptions) {
+				if ($TemplateFile) {
+					printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $key\n";
+				} else {
+					printv "Warning: Orphaned opton (found in oldfile but not in the newfile): $key\n";
+				}
+				$OrphansFound = 1;
 			}
-			$OrphansFound = 1;
 		}
 		if ($OrphansFound and $NoOrphans) {
 			printnv "failed - orphaned options detected.\n";
@@ -276,7 +278,7 @@ sub Help {
 	PrintHelp("-r", "--noorphans", "Exit if orphaned options are detected");
 	PrintHelp("", "", "(see manpage for more information");
 	PrintHelp("-g", "--ignoreopt", "Keep the setting from --newfile for this option");
-	PrintHelp("", "", "(can be supplied more than once - doesn't work with -p)");
+	PrintHelp("", "", "(can be supplied more than once)");
 	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
 	PrintHelp("-h", "--help", "Display this help screen");
 	PrintHelp("", "--version", "Display the version number");
