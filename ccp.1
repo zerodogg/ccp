@@ -1,0 +1,111 @@
+.\" Manpage for Common Configuration Parser
+.\" $Id$
+.\" Copyright (C) Eskild Hustvedt 2006
+.\"
+.\" This document is free; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License
+.\" as published by the Free Software Foundation; either version 2
+.\" of the License, or (at your option) any later version.
+.\"
+.\" This document is distributed in the hope that it will be useful,
+.\" but WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+.\" GNU General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software Foundation, Inc.,
+.\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+.TH CCP 1 "January 2006" "Common Configuration Parser 0.1" "User Manuals"
+.SH NAME
+ccp - A program that parses and upgrades configuration file
+.SH SYNOPSIS
+.B ccp
+[\fIOPTIONS\fR] --oldfile \fI/path/\fR --newfile \fI/path/\fR
+.SH DESCRIPTION
+.B CCP
+is a program that reads configuration files and upgrades them.
+
+It takes a oldfile (typically the old configuration file currently in use)
+and a newfile (typically the default new configuration file) and optionally
+a template (a file which tells ccp how the generated configuration file should
+look like. It is generated on-the-fly if a template isn't supplied, so it is
+usually not needed). CCP first reads all the configuration options and values in
+the new file, then in the old file, then it either generates the template or reads
+the supplied template file, finally it merges the files into one - creating a new
+configuration file that has the changes that was made to the old file but also
+the new options that is included in the new file.
+
+CCP is completely independant of the program that created the configuration file,
+and can be used for many different purposes. For instance it can be used to merge
+changes between an old user-edited configuration file and a .rpmnew file generated
+by rpm when a rpm was upgraded.
+.SH OPTIONS
+.TP
+\fB\-o\fR, \fB\-\-oldfile\fR \fI/path\fR
+Define the old configuration file. Typically this will be a configuration file for
+an earlier version of a program that has been changed by the user.
+This is also the file that the changes made by ccp will be written back to if
+--outputfile isn't supplied.
+.TP
+\fB\-n\fR, \fB\-\-newfile\fR \fI/path\fR
+Define the new configuration file. Typically this will be the default configuration
+file for the new version of the software.
+.TP
+\fB\-b\fR, \fB\-\-backup\fR \fI(/path)\fR
+Make a backup of the file we're writing to before making changes to it. It will be backed
+up to \fIfilename.ccpbackup\fR or optionally to the file path supplied.
+.TP
+\fB\-\-delete\fR
+Delete the --newfile if it is writeable by the user running ccp and the configuration file
+is upgraded successfully.
+.TP
+\fB\-i\fR, \fB\-\-ifexists\fR
+If --newfile doesn't exist then exit silently instead of displaying an error message.
+Useful when running in for instance rpm %postin
+.TP
+\fB\-\-noorphans\fR
+Exit if orphaned options are detected. See the section "About orphaned options" below for
+more information on orphaned options.
+.TP
+\fB\-f\fR, \fB\-\-outputfile\fR \fI/path\fR
+Write the new (merged) configuration file to this file instead of --oldfile.
+.TP
+\fB\-\-writetemplate\fR \fI/path\fR
+Write the auto-generated template to the file supplied. This is the \fBonly\fR option that
+doesn't require --oldfile. It will not upgrade any configuration file but it will create
+a template from --newfile and write it to the file supplied.
+.TP
+\fB\-p\fR, \fB\-\-template\fR \fI/path\fR
+Don't generate the template on-the-fly but use the pre-generated one supplied as a
+parameter to this option.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Display the help screen
+.TP
+\fB\-v\fR, \fB\-\-verbose\fR
+Be verbose. Displays more information about what it's doing, and also shows warnings.
+Unless ccp is told to be verbose most warnings will just be suppressed.
+.TP
+\fB-V\fR, \fB\-\-veryverbose\fR
+Be very verbose, implies --verbose. Displays alot information about what it's doing,
+generally useful to find out why something isn't working right.
+.SH ABOUT ORPHANED OPTIONS
+Orphaned options are options that is found in the oldfile or newfile but not in
+the template file. These are currently discarded, this can in some cases lead to
+configuration loss. Therefore it is recommended that you either use \fB--backup\fR
+or \fB--noorphans\fR when working on files that can have additional configuration
+options added that is not defined by default if ccp is run on it automatically.
+If ccp is not run automatically then using -vb will do the trick, -v makes sure
+ccp tells you about it and you can restore or check the backup (-b) afterwards.
+
+On configuration files that doesn't have the ability to add/uncomment options
+orphaned options will not occur (unless there is a bug in ccp).
+.SH AUTHOR
+.B CCP
+is written by Eskild Hustvedt
+.I <eskild at mandriva dot org>
+.SH COPYRIGHT
+Copyright (C) 2005, 2006 Eskild Hustvedt.
+.br
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
