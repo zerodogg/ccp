@@ -39,10 +39,10 @@ my (
 	$WriteBackup,	$NoOrphans,	$DeleteNewfile
 );	# Scalars
 my (
-	%Config,
+	%Config,	
 );	# Hashes
 my (
-	@Template,
+	@Template, @IgnoreOptions
 );	# Arrays
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -119,6 +119,8 @@ sub GenerateTemplate {
 		$Name =~ s/\s*(\$)//;
 		$Name =~ s/\s+//g;
 		next unless $Name;
+		# Don't do anything if Name exists in %IgnoreOptions
+		$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; #if $IgnoreOptions{$Name};
 		# Okay, time to find out the values
 		my $LineContents = $_;				# Copy $_'s contents to $LineContents
 		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
@@ -268,11 +270,13 @@ sub Help {
 	#PrintHelp("-t", "--type", "Select an alternate configuration filetype, see the docs for info");
 	PrintHelp("-b", "--backup", "Backup --oldfile (or --outputfile) to filename.ccpbackup");
 	PrintHelp("","", "(or to the file supplied) before writing the upgraded config file");
-	PrintHelp("", "--delete", "Delete --newfile if it is writeable by me and the configuration");
+	PrintHelp("-d", "--delete", "Delete --newfile if it is writeable by me and the configuration");
 	PrintHelp("", "", "file is upgraded successfully");
 	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
-	PrintHelp("", "--noorphans", "Exit if orphaned options are detected");
+	PrintHelp("-r", "--noorphans", "Exit if orphaned options are detected");
 	PrintHelp("", "", "(see manpage for more information");
+	PrintHelp("-g", "--ignoreopt", "Keep the setting from --newfile for this option");
+	PrintHelp("", "", "(can be supplied more than once - doesn't work with -p)");
 	PrintHelp("-f", "--outputfile", "Output to this file instead of oldfile");
 	PrintHelp("-h", "--help", "Display this help screen");
 	PrintHelp("", "--version", "Display the version number");
@@ -303,8 +307,9 @@ GetOptions (
 	'i|ifexist' => \$IfExist,
 	'writetemplate=s' => \$WriteTemplateTo,
 	'b|backup:s' => \$WriteBackup,
-	'noorphans' => \$NoOrphans,
-	'delete' => \$DeleteNewfile,
+	'r|noorphans' => \$NoOrphans,
+	'd|delete' => \$DeleteNewfile,
+	'g|ignoreopt=s' => \@IgnoreOptions,
 ) or die "Run ", basename($0), " --help for more information\n";
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
