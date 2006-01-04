@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Common Configuration Parser version 0.1 
+# Common Configuration Parser version 0.2
 # $Id$
 # Copyright (C) Eskild Hustvedt 2005, 2006
 #
@@ -17,7 +17,6 @@
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 #
-package CCP;
 # The modules we want to use
 use strict;				# Make my coding strict
 use warnings;				# Warn me!
@@ -29,7 +28,7 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.1";			# Version number
+my $Version = "0.2 CVS";		# Version number
 
 # Declare variables
 my (
@@ -42,7 +41,7 @@ my (
 	%Config,	
 );	# Hashes
 my (
-	@Template, @IgnoreOptions
+	@Template,	@IgnoreOptions,	
 );	# Arrays
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -75,20 +74,16 @@ sub LoadFile {
 	# Parse and put into the hash
 	foreach (<FILE>) {
 		chomp;
-		s/#.*//;                # Strip "#" comments
-		s#^/\*.*##;		# Strip "/*" comments
-		s#^\s*\*.*##;		# Strip "whitespace *" comments
-		s#^\s*\*/.*##;		# Strip "whitespace */" comment endings
-		s#^<.*##;		# Strip lines beginning with < (tags, php config files - this type doesn't support XML configs anyway)
-		s#^\?>.*##;		# Strip lines beginning with ?> (php closing tag)
 		s/^\s+//;               # Strip leading whitespace
 		s/\s+$//;               # Strip trailing whitespace
-				# FIXME: We should perhaps only strip ^;.* ?
-		s/:.*//;		# Strip : comments
-		s/;.*//;		# Strip ; comments
-		s/\[.*//;		# We can't do anything with section headers so we skip them
-		s/;$//;			# Strip trailing ; (FIXME: Dump? Already stripped further up)
+		next if m#^<.*#;	# Skip lines beginning with < (tags, php config files - this type doesn't support XML configs anyway)
+		next if m#^\?>.*#;	# Skip lines beginning with ?> (php closing tag)
+		next if /^\s*(#|\/\*|:|;|\*).*/; # Skip comments
+		next if /\[.*/;		# We can't do anything with section headers so we skip them
+		s/;$//;			# Strip trailing ; 
 		s/^\$//;		# Strip leading $
+		# Strip comment lines
+#		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }
 		next unless length;	# Empty?
 		next unless /=/;	# No "=" in the line means nothing for us to do
 		my ($var, $value) = split(/\s*=\s*/, $_, 2);    # Set the variables
@@ -109,6 +104,8 @@ sub GenerateTemplate {
 	close(NEWFILE);
 	foreach (@Template) {
 		my $EOL = "";
+#		next if /^\s*[<|\?>|@]/;			# Check for commands/code that ccp doesn't handle/need to handle
+#		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }	# Check for comments
 		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Check for comments and other funstuff that we don't handle
 		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
@@ -325,6 +322,7 @@ if (!-e $NewFile) {
 die "$NewFile does not exist\n" unless -e $NewFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
 die "$NewFile is not readable by me\n" unless -r $NewFile;
+
 
 # If $WriteTemplateTo is set to something then we should just run WriteTemplate
 # and then exit
