@@ -15,7 +15,7 @@
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-.TH CCP 1 "January 2006" "Common Configuration Parser 0.1" "User Manuals"
+.TH CCP 1 "January 2006" "Common Configuration Parser 0.2" "User Manuals"
 .SH NAME
 ccp - A program that parses and upgrades configuration files
 .SH SYNOPSIS
@@ -35,7 +35,7 @@ the supplied template file, finally it merges the files into one - creating a ne
 configuration file that has the changes that was made to the old file but also
 the new options that is included in the new file.
 
-CCP is completely independant of the program that created the configuration file,
+CCP is completely independent of the program that created the configuration file,
 and can be used for many different purposes. For instance it can be used to merge
 changes between an old user-edited configuration file and a .rpmnew file generated
 by rpm when a rpm was upgraded.
@@ -111,6 +111,15 @@ ccp tells you about it and you can restore or check the backup (-b) afterwards.
 
 On configuration files that doesn't have the ability to add/uncomment options
 orphaned options will not occur (unless there is a bug in ccp).
+.SH USAGE EXAMPLES
+.TP
+\fBSquirrelMail\fR .rpmnew
+\fB$\fR ccp --delete --ifexists --noorphans --ignoreopt config_version --oldfile /etc/squirrelmail/config.php --newfile /etc/squirrelmail/config.php.rpmnew
+
+--delete makes sure the .rpmnew is deleted, --ifexists makes it exit (silently) if the .rpmnew
+does not exist (for use in %post scripts in RPMs), --noorphans makes sure that ccp doesn't
+touch the file if the user has uncommented options, --ignoreopt config_version makes sure
+we use the config_version from the .rpmnew and not the old one.
 .SH AUTHOR
 .B CCP
 is written by Eskild Hustvedt
