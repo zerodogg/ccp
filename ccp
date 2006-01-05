@@ -28,7 +28,7 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.2 CVS";		# Version number
+my $Version = "0.2";			# Version number
 
 # Declare variables
 my (
@@ -78,8 +78,8 @@ sub LoadFile {
 		s/\s+$//;               # Strip trailing whitespace
 		next if m#^<.*#;	# Skip lines beginning with < (tags, php config files - this type doesn't support XML configs anyway)
 		next if m#^\?>.*#;	# Skip lines beginning with ?> (php closing tag)
-		next if /^\s*(#|\/\*|:|;|\*).*/; # Skip comments
-		next if /\[.*/;		# We can't do anything with section headers so we skip them
+		next if /^(#|\/\*|:|;|\*)/; # Skip comments
+		next if /^\[/;		# We can't do anything with section headers so we skip them
 		s/;$//;			# Strip trailing ; 
 		s/^\$//;		# Strip leading $
 		# Strip comment lines
@@ -106,7 +106,7 @@ sub GenerateTemplate {
 		my $EOL = "";
 #		next if /^\s*[<|\?>|@]/;			# Check for commands/code that ccp doesn't handle/need to handle
 #		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }	# Check for comments
-		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@]/;	# Check for comments and other funstuff that we don't handle
+		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@|\[]/;	# Check for comments and other funstuff that we don't handle
 		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
 		chomp;						# Remove newlines
@@ -180,7 +180,7 @@ sub OutputFile {
 	foreach my $key (keys %Config) {
 		printvv "Exchanging {CCP::CONFIG::$key} in template with $Config{$key}\n";
 		foreach (@Template) {
-			if (s/{CCP::CONFIG::$key}/$Config{$key}/) {
+			if (s/{CCP::CONFIG::\Q$key\E}/$Config{$key}/) {
 				# If we replaced something then we delete the key.
 				# A key should never be used more than once, you'll need an ini-type for that to work.
 				delete($Config{$key});
@@ -189,7 +189,7 @@ sub OutputFile {
 		}
 	}
 	# Remove options that are in the template but not in any of the other files.
-	# Shouldn't happen with auto-generated templates (but it does)
+	# Shouldn't happen with auto-generated templates (but it might very well happen anyway)
 	foreach (@Template) {
 		if (s/{CCP::CONFIG::(.+)}//) {
 			printv "Warning: Option found in template but not in oldfile or newfile: $1\n";
@@ -219,7 +219,7 @@ sub OutputFile {
 			copy($OutputFile, $WriteBackup);
 			printv "Backed up \"$OutputFile\" to \"$WriteBackup\"\n";
 		} else {
-			printvv "I won't back up \"$OutputFile\", it doesn't exist so theres nothing to backup.\n";
+			printvv "I won't back up \"$OutputFile\", it doesn't exist so there's nothing to backup.\n";
 		}
 	}
 	# Write it out
@@ -312,6 +312,15 @@ GetOptions (
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
 
+# Set the verbosity settings according to environment variables
+if (defined($ENV{CCP_VERBOSE}) and $ENV{CCP_VERBOSE} eq 1) {
+	$Verbose = 1;
+}
+if (defined($ENV{CCP_VERYVERBOSE}) and $ENV{CCP_VERYVERBOSE} eq 1) {
+	$VeryVerbose = 1;
+	$Verbose = 1;
+}
+
 # Verify existance if $NewFile and exit as requested if needed
 if (!-e $NewFile) {
 	exit 0 if $IfExist;
@@ -389,7 +398,9 @@ unless ($OutputFile eq $OldFile) {
 	printnv "Merging changes between \"$OldFile\" and \"$NewFile\"...";
 }
 
+# Load settings from the files
 LoadFile($NewFile);
 LoadFile($OldFile);
+# Output the new file
 OutputFile;
 printnv "done\n";

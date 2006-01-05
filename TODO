@@ -1,12 +1,6 @@
 TODO list for Common Configuration Parser.
 Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 
-TODO before the release of 0.2:
-- - - - - - - - - - - - - - - -
-- None currently
-
-Longer term TODO list
-- - - - - - - - - - -
 - Add support for supplying different --type(s)
 	- So that ccp can upgrade different forms of config files
 	- Read the list of supported types from a directory and do(); the file

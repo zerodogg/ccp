@@ -110,7 +110,7 @@ If ccp is not run automatically then using -vb will do the trick, -v makes sure
 ccp tells you about it and you can restore or check the backup (-b) afterwards.
 
 On configuration files that doesn't have the ability to add/uncomment options
-orphaned options will not occur (unless there is a bug in ccp).
+orphans will not occur (unless there is a bug in ccp).
 .SH USAGE EXAMPLES
 .TP
 \fBSquirrelMail\fR .rpmnew
@@ -120,10 +120,27 @@ orphaned options will not occur (unless there is a bug in ccp).
 does not exist (for use in %post scripts in RPMs), --noorphans makes sure that ccp doesn't
 touch the file if the user has uncommented options, --ignoreopt config_version makes sure
 we use the config_version from the .rpmnew and not the old one.
+.SH ENVIRONMENT VARIABLES
+CCP reacts to a few different environment variables. All of these override
+commandline options if set. Useful if you want ccp to use a different verbosity
+level when ccp is called from an external piece of software, such as from a
+RPM %post script.
+.TP
+\fBCCP_VERBOSE\fR
+Set this environment variable to the value "1" to force CCP to be verbose.
+You can only increase the verbosity level using this variable, you can't
+decrease it.
+.TP
+\fBCCP_VERYVERBOSE\fR
+Set this environment variable to the value "1" to force CCP to be very verbose.
+You can only increase the verbosity level using this variable, you can't
+decrease it.
 .SH AUTHOR
 .B CCP
-is written by Eskild Hustvedt
-.I <eskild at mandriva dot org>
+is written by Eskild Hustvedt \fI<eskild at mandriva dot org>\fR
+.SH BUGS
+There are currently no known bugs with ccp. If you find any bugs, please report them
+to the bug tracker at \fI<http://savannah.nongnu.org/bugs/?group=ccp>\fR
 .SH COPYRIGHT
 Copyright (C) 2005, 2006 Eskild Hustvedt.
 .br
