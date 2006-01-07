@@ -28,14 +28,15 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.2";			# Version number
+my $Version = "0.2.1-CVS";		# Version number
 
 # Declare variables
 my (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
 	$OutputFile,	$IfExist,	$WriteTemplateTo,
-	$WriteBackup,	$NoOrphans,	$DeleteNewfile
+	$WriteBackup,	$NoOrphans,	$DeleteNewfile,
+	$ParanoidMode,
 );	# Scalars
 my (
 	%Config,	
@@ -69,6 +70,7 @@ sub printvv {
 
 sub LoadFile {
 	die "LoadFile got a nonexistant file supplied!" unless -e $_[0];
+	my %ParanoiaHash if $ParanoidMode;
 	printv "Loading and parsing \"$_[0]\"\n";
 	open(FILE, "<$_[0]");
 	# Parse and put into the hash
@@ -82,15 +84,20 @@ sub LoadFile {
 		next if /^\[/;		# We can't do anything with section headers so we skip them
 		s/;$//;			# Strip trailing ; 
 		s/^\$//;		# Strip leading $
-		# Strip comment lines
-#		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }
 		next unless length;	# Empty?
 		next unless /=/;	# No "=" in the line means nothing for us to do
 		my ($var, $value) = split(/\s*=\s*/, $_, 2);    # Set the variables
 		printvv "Read key value pair: \"$var\" = \"$value\"\n";
 		$Config{$var} = $value;
+		$ParanoiaHash{$var}++ if $ParanoidMode;
 	}
 	close(FILE);
+	# If we're not in ParanoidMode then we're all done
+	return(1) unless $ParanoidMode;
+	printvv "Running paranoia test on $_[0]\n";
+	foreach(sort(keys(%ParanoiaHash))) {
+		print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$_} times\n" if $ParanoiaHash{$_} gt 1;
+	}
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -106,7 +113,7 @@ sub GenerateTemplate {
 		my $EOL = "";
 #		next if /^\s*[<|\?>|@]/;			# Check for commands/code that ccp doesn't handle/need to handle
 #		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }	# Check for comments
-		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|@|\[]/;	# Check for comments and other funstuff that we don't handle
+		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/;	# Check for comments and other funstuff that we don't handle
 		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
 		chomp;						# Remove newlines
@@ -249,7 +256,7 @@ sub OutputFile {
 # This is just because I'm too lazy to type the printf every time
 # and this function makes it more practical.
 # Syntax is simply: PrintHelp("shortoption", "longoption", "description")
-sub PrintHelp {
+sub PrintHelp ($$$) {
         printf "%-4s %-16s %s\n", "$_[0]", "$_[1]", "$_[2]";
 }
 
@@ -280,6 +287,7 @@ sub Help {
 	PrintHelp("", "--version", "Display the version number");
 	PrintHelp("-v", "--verbose", "Be verbose");
 	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
+	PrintHelp("-P", "--paranoid", "Run paranoid tests (see the manpage). Implies -V");
 	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
 	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
 	PrintHelp("-p", "--template", "Use the manually created template supplied");
@@ -308,6 +316,7 @@ GetOptions (
 	'r|noorphans' => \$NoOrphans,
 	'd|delete' => \$DeleteNewfile,
 	'g|ignoreopt=s' => \@IgnoreOptions,
+	'P|paranoid' => \$ParanoidMode,
 ) or die "Run ", basename($0), " --help for more information\n";
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
@@ -320,8 +329,17 @@ if (defined($ENV{CCP_VERYVERBOSE}) and $ENV{CCP_VERYVERBOSE} eq 1) {
 	$VeryVerbose = 1;
 	$Verbose = 1;
 }
+# Set paranoia settings
+if (defined($ENV{CCP_PARANOID}) and $ENV{CCP_PARANOID} eq 1) {
+	$ParanoidMode = 1;
+}
+if ($ParanoidMode) {
+	print "Paranoid mode is on!\n";
+	$VeryVerbose = 1;
+	$Verbose = 1;
+}
 
-# Verify existance if $NewFile and exit as requested if needed
+# Verify existance of $NewFile and exit as requested if needed
 if (!-e $NewFile) {
 	exit 0 if $IfExist;
 	die "$NewFile does not exist\n";
