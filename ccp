@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Common Configuration Parser version 0.2
+# Common Configuration Parser version 0.2.1
 # $Id$
 # Copyright (C) Eskild Hustvedt 2005, 2006
 #
@@ -96,7 +96,7 @@ sub LoadFile {
 	return(1) unless $ParanoidMode;
 	printvv "Running paranoia test on $_[0]\n";
 	foreach(sort(keys(%ParanoiaHash))) {
-		print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$_} times\n" if $ParanoiaHash{$_} gt 1;
+		print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$_} times)\n" if $ParanoiaHash{$_} gt 1;
 	}
 }
 
@@ -111,8 +111,6 @@ sub GenerateTemplate {
 	close(NEWFILE);
 	foreach (@Template) {
 		my $EOL = "";
-#		next if /^\s*[<|\?>|@]/;			# Check for commands/code that ccp doesn't handle/need to handle
-#		foreach my $Comment (@Comments) { next if /^\Q$Comment\E/; }	# Check for comments
 		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/;	# Check for comments and other funstuff that we don't handle
 		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
@@ -155,7 +153,6 @@ sub WriteTemplate {
 	# Now, create the template
 	GenerateTemplate;
 	# Now, write the template
-	printnv "Writing to \"$WriteTemplateTo\"... ";
 	printv "Writing template to \"$WriteTemplateTo\"\n";
 	open(TEMPLATEOUT, ">$WriteTemplateTo");
 	foreach (@Template) {
@@ -196,10 +193,21 @@ sub OutputFile {
 		}
 	}
 	# Remove options that are in the template but not in any of the other files.
-	# Shouldn't happen with auto-generated templates (but it might very well happen anyway)
+	# Shouldn't happen with auto-generated templates - if it does then it's a bug.
 	foreach (@Template) {
 		if (s/{CCP::CONFIG::(.+)}//) {
-			printv "Warning: Option found in template but not in oldfile or newfile: $1\n";
+			if ($TemplateFile) {
+				printv "Warning: Option found in template but not in oldfile or newfile: $1\n";
+			} else {
+				# BUG!
+				print "\nWARNING: Option found in template but not in oldfile or newfile: $1\n";
+				print "This reflects a bug in CCP! Please report it to http://ccp.nongnu.org/\n";
+				# Force a backup to be written even if it isn't requested
+				unless ($WriteBackup) {
+					print "Forcing CCP to write a backup file - but still continuing\n";
+					$WriteBackup = "$OutputFile.ccpbackup";
+				}
+			}
 		}
 	}
 	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
@@ -209,7 +217,7 @@ sub OutputFile {
 				if ($TemplateFile) {
 					printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $key\n";
 				} else {
-					printv "Warning: Orphaned opton (found in oldfile but not in the newfile): $key\n";
+					printv "Warning: Orphaned option (found in oldfile but not in the newfile): $key\n";
 				}
 				$OrphansFound = 1;
 			}
@@ -287,7 +295,7 @@ sub Help {
 	PrintHelp("", "--version", "Display the version number");
 	PrintHelp("-v", "--verbose", "Be verbose");
 	PrintHelp("-V", "--veryverbose", "Be very verbose, useful for testing. Implies -v");
-	PrintHelp("-P", "--paranoid", "Run paranoid tests (see the manpage). Implies -V");
+	PrintHelp("-P", "--paranoid", "Run paranoid tests (see the manpage). Implies -v");
 	PrintHelp("", "--writetemplate", "Write template to the file supplied and exit");
 	PrintHelp("", "", "(doesn't do any merging and --oldfile isn't needed)");
 	PrintHelp("-p", "--template", "Use the manually created template supplied");
@@ -305,7 +313,7 @@ GetOptions (
 	'o|oldfile=s' => \$OldFile,
 	'n|newfile=s' => \$NewFile,
 	'p|template=s' => \$TemplateFile,
-	't|type=s' => sub { print "--type ignored, not implemented yet\n"; },
+	't|type=s' => sub { die "--type isn't implemented in this version of CCP\n"},
 	'v|verbose' => \$Verbose,
 	'V|veryverbose' => sub { $Verbose = 1;
 		$VeryVerbose = 1;
@@ -335,7 +343,7 @@ if (defined($ENV{CCP_PARANOID}) and $ENV{CCP_PARANOID} eq 1) {
 }
 if ($ParanoidMode) {
 	print "Paranoid mode is on!\n";
-	$VeryVerbose = 1;
+#	$VeryVerbose = 1;
 	$Verbose = 1;
 }
 
