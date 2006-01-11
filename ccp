@@ -28,7 +28,7 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.2.1-CVS";		# Version number
+my $Version = "0.2.2";			# Version number
 
 # Declare variables
 my (
@@ -328,6 +328,12 @@ GetOptions (
 ) or die "Run ", basename($0), " --help for more information\n";
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
+
+# Exit if the environment variables are set
+if (defined($ENV{CCP_DISABLE}) and $ENV{CCP_DISABLE} eq 1) {
+	printv "Exiting as requested by the CCP_DISABLE environment variable\n";
+	exit 0;
+}
 
 # Set the verbosity settings according to environment variables
 if (defined($ENV{CCP_VERBOSE}) and $ENV{CCP_VERBOSE} eq 1) {

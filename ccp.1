@@ -15,7 +15,7 @@
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-.TH CCP 1 "January 2006" "Common Configuration Parser 0.2.1" "User Manuals"
+.TH CCP 1 "January 2006" "Common Configuration Parser 0.2.2" "User Manuals"
 .SH NAME
 ccp - A program that parses and upgrades configuration files
 .SH SYNOPSIS
@@ -24,6 +24,7 @@ ccp - A program that parses and upgrades configuration files
 .SH DESCRIPTION
 .B CCP
 is a program that reads configuration files and upgrades them.
+
 
 It takes a oldfile (typically the old configuration file currently in use)
 and a newfile (typically the default new configuration file) and optionally
@@ -149,6 +150,11 @@ decrease it.
 \fBCCP_PARANOID\fR
 Set this environment variable to the value "1" to force CCP to be very verbose.
 You can only make CCP paranoid using this variable, you can't make it not-paranoid.
+.TP
+\fBCCP_DISABLE\fR
+Set this envornment variable to the value "1" to force CCP to be disabled.
+CCP will immedietly exit after parsing it's commandline arguments, useful
+if you have CCP run automatically but want to skip using it.
 .SH AUTHOR
 .B CCP
 is written by Eskild Hustvedt \fI<eskild at mandriva dot org>\fR
