@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Common Configuration Parser version 0.2.1
+# Common Configuration Parser version 0.2.2
 # $Id$
 # Copyright (C) Eskild Hustvedt 2005, 2006
 #
@@ -349,7 +349,6 @@ if (defined($ENV{CCP_PARANOID}) and $ENV{CCP_PARANOID} eq 1) {
 }
 if ($ParanoidMode) {
 	print "Paranoid mode is on!\n";
-#	$VeryVerbose = 1;
 	$Verbose = 1;
 }
 
