@@ -318,7 +318,7 @@ GetOptions (
 	'V|veryverbose' => sub { $Verbose = 1;
 		$VeryVerbose = 1;
 	},
-	'i|ifexist' => \$IfExist,
+	'i|ifexist|ifexists' => \$IfExist,
 	'writetemplate=s' => \$WriteTemplateTo,
 	'b|backup:s' => \$WriteBackup,
 	'r|noorphans' => \$NoOrphans,
