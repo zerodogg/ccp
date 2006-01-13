@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# Common Configuration Parser version 0.2.2
+# Common Configuration Parser version 0.2.3
 # $Id$
 # Copyright (C) Eskild Hustvedt 2005, 2006
 #
@@ -28,7 +28,7 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.2.2";			# Version number
+my $Version = "0.2.3";			# Version number
 
 # Declare variables
 my (
@@ -36,7 +36,7 @@ my (
 	$TemplateFile,	$Verbose,	$VeryVerbose,
 	$OutputFile,	$IfExist,	$WriteTemplateTo,
 	$WriteBackup,	$NoOrphans,	$DeleteNewfile,
-	$ParanoidMode,
+	$ParanoidMode,	$DebugMode,
 );	# Scalars
 my (
 	%Config,	
@@ -62,6 +62,11 @@ sub printv {
 # Very verbose print
 sub printvv {
 	print " $_[0]" if $VeryVerbose;
+}
+
+# Debugging print
+sub printd {
+	print "DEBUG: $_[0]" if $DebugMode;
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -117,8 +122,8 @@ sub GenerateTemplate {
 		chomp;						# Remove newlines
 		my $Name = $_;					# Copy $_'s contents to $Name 
 		# Start stripping junk from the line, to figure out the name of the variable
-		$Name =~ s/(.+)\s*=\s*.*/$1/;
-		$Name =~ s/\s*(\$)//;
+		$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
+		$Name =~ s/^\s*(\$)//;
 		$Name =~ s/\s+//g;
 		next unless $Name;
 		# Don't do anything if Name exists in %IgnoreOptions
@@ -132,6 +137,7 @@ sub GenerateTemplate {
 		}
 		# $LineContents is now the part of $_ we want to replace
 		s/(.*=\s*)\Q$LineContents\E/${1}{CCP::CONFIG::$Name}$EOL\n/;
+		printd "Regexp: s/(.*=\\s*)\\Q$LineContents\\E/\${1}{CCP::CONFIG::$Name}$EOL\\n/\n";
 		printvv "Read setting \"$Name\"\n";
 	}
 }
@@ -182,11 +188,14 @@ sub OutputFile {
 	printv "Merging settings into $OutputFile\n";
 	# Merge the settings into the template
 	foreach my $key (keys %Config) {
+		my $LineNo = 0 if $DebugMode;
 		printvv "Exchanging {CCP::CONFIG::$key} in template with $Config{$key}\n";
 		foreach (@Template) {
+			$LineNo++ if $DebugMode;
 			if (s/{CCP::CONFIG::\Q$key\E}/$Config{$key}/) {
 				# If we replaced something then we delete the key.
 				# A key should never be used more than once, you'll need an ini-type for that to work.
+				printd "Match of $key on line $LineNo, key deleted - moving on to next key\n" if $DebugMode;
 				delete($Config{$key});
 				last;
 			}
@@ -325,6 +334,12 @@ GetOptions (
 	'd|delete' => \$DeleteNewfile,
 	'g|ignoreopt=s' => \@IgnoreOptions,
 	'P|paranoid' => \$ParanoidMode,
+	'D|debug' => sub {
+		$DebugMode = 1;
+		$VeryVerbose = 1;
+		$ParanoidMode = 1;
+		$Verbose = 1;
+	},
 ) or die "Run ", basename($0), " --help for more information\n";
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
