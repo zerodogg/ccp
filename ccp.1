@@ -15,7 +15,7 @@
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-.TH CCP 1 "January 2006" "Common Configuration Parser 0.2.2" "User Manuals"
+.TH CCP 1 "January 2006" "Common Configuration Parser 0.2.3" "User Manuals"
 .SH NAME
 ccp - A program that parses and upgrades configuration files
 .SH SYNOPSIS
@@ -110,6 +110,10 @@ in paranoid mode. This implies -v.
 
 If you're uncertain about if a file will work or not in CCP then you should pass
 it through -P and look for warnings.
+.TP
+\fB-D\fR, \fB\-\-debug\fR
+Run in debugging mode, outputs alot of information. Only useful for debugging.
+Implies -V and -P.
 
 .SH ABOUT ORPHANED OPTIONS
 Orphaned options are options that is found in the oldfile or newfile but not in
