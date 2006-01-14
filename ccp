@@ -29,7 +29,7 @@ use File::Copy;				# We need to copy files (backup)
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
 my $Version = "0.2.4";			# Version number
-my $CVSRevision = '$id$';		# CVS revision
+my $CVSRevision = '$Id$';		# CVS revision
 
 # Declare variables
 my (
