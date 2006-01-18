@@ -1,0 +1,17 @@
+# GoldenPod configuration file
+# Do NOT put podcast feed URLs in this file! Put them in podcasts.conf
+
+# The directory the podcasts will be downloaded to
+# This is only used if there is no ./podcasts.conf or ./bp.conf
+# If one those are present WorkingDir will be ./
+$WorkingDir = "/home/zerodogg/Podcasts";
+
+# The default verbosity, anything other than 0 means verbose
+$DefaultVerbosity = "1";
+
+# Set this to a regular expression you want goldenpod to ignore when downloading
+# or copying podcasts. --ignore-pattern overrides this and --rmold only obeys --ignore-pattern, not this configuration setting.
+$IgnorePattern = "";
+
+# Set this to 1 if you want GoldenPod only to download audio feeds
+$PodcastFilter = "0";
