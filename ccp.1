@@ -110,10 +110,18 @@ in paranoid mode. This implies -v.
 
 If you're uncertain about if a file will work or not in CCP then you should pass
 it through -P and look for warnings.
+
+.\" Options not in --help
+
 .TP
 \fB-D\fR, \fB\-\-debug\fR
 Run in debugging mode, outputs alot of information. Only useful for debugging.
 Implies -V and -P.
+.TP
+\fB\-\-bug\fR
+Output a ./ccpdebug file that contains information about your CCP version and
+the files you are trying to use. It requires you to at least supply --newfile
+and --oldfile aswell.
 
 .SH ABOUT ORPHANED OPTIONS
 Orphaned options are options that is found in the oldfile or newfile but not in
