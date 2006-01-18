@@ -4,3 +4,11 @@ CCP testsuite
 The purpose of the testsuite is to make sure that CCP doesn't
 break stuff that used to work. It is automated, just run
 ./ccp-testsuite and it will tell you if something breaks.
+
+Adding tests
+------------
+It's actually quite simple. Create a directory, that will be the name
+of the test, next put a NEWFILE (--newfile), OLDFILE (--oldfile) and
+DESIRED_OUTPUT (the file CCP should create) and testsuite.conf
+
+See the already existing tests for more info
