@@ -1,0 +1,110 @@
+#!/usr/bin/perl
+# ccp-testsuite
+# $Id$
+# Copyright (C) Eskild Hustvedt 2006
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+use strict;                             # Make my coding strict
+use warnings;                           # Warn me!
+use Fatal qw/ open /;                   # So I don't have to type "or die" too much :)
+use File::Basename;                     # Needed to find out our directory and name
+use Cwd;                                # Needed for getcwd
+use Getopt::Long;                       # Commandline parsing
+use File::Temp qw/ tempfile /;		# Need a temporary file
+
+my $Version = "0.1";			# Version number
+my $CVSRevision = '$Id$';		# CVS revision
+my $RootDir = dirname($0);		# The dir containing ccp-testsuite
+my $CCPBin;				# The path to ccp
+my $TestsFailed;			# The number of failed tests
+my ($TMPFHandle, $TemporaryFile) = tempfile or die "Failed to create temporary file\n";
+
+print "ccp-testsuite version $Version running\n\n";
+
+# Detect ccp:
+if (-x "$RootDir/../ccp") {
+	$CCPBin = "$RootDir/../ccp";
+} else {
+	die "Unable to detect where ccp is\n";
+}
+
+# Start the test
+foreach(<$RootDir/*>) {
+	# If the file isn't a dir or doesn't have testsuite.conf then skip it
+	if (-d $_ and -e "$_/testsuite.conf") {
+		# Declare variables
+		my (
+			$ReturnValue,	$CCPOpts,	$Error
+		);
+		my $Failed = 0;
+		# Display initial message
+		print "Running test: ", basename($_),"...";
+		# We also need the NEWFILE, OLDFILE and DESIRED_OUTPUT files
+		unless (-e "$_/NEWFILE" and -e "$_/OLDFILE" and -e "$_/DESIRED_OUTPUT") {
+			print "invalid test - skipping\n" and next;
+		}
+		# Read the config
+		{
+			open(CONFIG, "<$_/testsuite.conf");
+			foreach(<CONFIG>) {
+				next if /^\s*#/;	# Skip comments
+				# We only recognize one option anyway right now
+				if (/^\s*CCPOpts/) {
+					s/^\s*CCPOpts\s*=\s*'?"?(.*)"?'?$/$1/;
+					$CCPOpts = $_;
+					chomp($CCPOpts);
+					last;
+				}
+			}
+			close(CONFIG);
+		}
+		# Run ccp, silently
+		$ReturnValue = system("$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null");
+		# If ccp fails, then stop here
+		if ($ReturnValue) {
+			$Failed = 1;
+			$Error = "Nonzero-return-value";
+		} else {	# If not, then continue on with the real test
+			# TODO: Don't use diff.
+			if (system("diff -q $TemporaryFile $_/DESIRED_OUTPUT &>/dev/null")) {
+				$Failed = 1;
+				$Error = "Desired_output-and-resulting-output-differ";
+			}
+		}
+			
+		# Did we fail?
+		unless ($Failed) {
+			# No :D
+			print "okay :)\n";
+		} else {
+			$TestsFailed++;
+			# Yes...
+			print "failed!\n";
+			print "DIAGNOSTICS:\n";
+			print "$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n";
+			print "ERROR: $Error\n";
+			print "Returned $ReturnValue\n\n";
+		}
+	}
+}
+# Display final statistics
+print "\n";
+if ($TestsFailed) {
+	print "$TestsFailed tests failed\n";
+} else {
+	print "All is well - no tests failed :)\n";
+}
+unlink($TemporaryFile);

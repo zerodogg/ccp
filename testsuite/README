@@ -1,0 +1,6 @@
+CCP testsuite
+-------------
+
+The purpose of the testsuite is to make sure that CCP doesn't
+break stuff that used to work. It is automated, just run
+./ccp-testsuite and it will tell you if something breaks.
