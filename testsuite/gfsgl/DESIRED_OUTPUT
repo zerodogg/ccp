@@ -1,0 +1,23 @@
+#*******************************************************************************
+# GFSGL General Configuration file for GFSGL version 0.93.0-CVS "Black Chair"
+# Game specific configuration files can be found in ./games/
+#*******************************************************************************
+
+# Set "secondX" to true if you want games to start on it's own X server.
+# Set it to "maybe" to start an X server if GFSGL is invoked from a tty
+# without X running (this option has no effect on xgfsgl).
+# NOTICE: secondX when invoked from X doesn't work on all systems
+# due to security restrictions.
+secondX="maybe"
+
+# Set "ModuleBlacklist" to the modules you _never_ want GFSGL to load.
+# This is useful if there s some basemodule that you don't want to load
+# (basemodules are the modules that GFSGL loads even if they aren't in the
+#  autoload directories).
+# The basemodules for this release are: debug install cmd GameUpdate AutoAddGames.
+# GFSGL will also try to load all modules starting with GMT_ automatically.
+#
+# NOTE: Modules added here can NOT be loaded AT ALL. If you want to load a
+# module listed here without removing it's entry here then either rename
+# the module file, or make a symlink to a new name.
+ModuleBlacklist="install"
