@@ -93,8 +93,8 @@ foreach(<$RootDir/*>) {
 			$TestsFailed++;
 			# Yes...
 			print "failed!\n";
-			print "Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n";
-			print "ERROR: $Error\n\n";
+			print " Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n";
+			print " ERROR: $Error\n";
 		}
 	}
 }
