@@ -71,6 +71,8 @@ foreach(<$RootDir/*>) {
 			}
 			close(CONFIG);
 		}
+		# If the temp file already exists, remove it.
+		unlink($TemporaryFile) if -e $TemporaryFile;
 		# Run ccp, silently
 		$ReturnValue = system("$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null");
 		# If ccp fails, then stop here
@@ -78,10 +80,15 @@ foreach(<$RootDir/*>) {
 			$Failed = 1;
 			$Error = "Nonzero-return-value ($ReturnValue)";
 		} else {	# If not, then continue on with the real test
-			# TODO: Don't use diff.
-			if (system("diff -q $TemporaryFile $_/DESIRED_OUTPUT &>/dev/null")) {
+			if (-e $TemporaryFile) {
+				# TODO: Don't use diff.
+				if (system("diff -q $TemporaryFile $_/DESIRED_OUTPUT &>/dev/null")) {
+					$Failed = 1;
+					$Error = "Desired_output-and-resulting-output-differ";
+				}
+			} else {
 				$Failed = 1;
-				$Error = "Desired_output-and-resulting-output-differ";
+				$Error = "No-output-file-at-all";
 			}
 		}
 			
