@@ -28,8 +28,8 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.2.4";			# Version number
-my $CVSRevision = '$Id$';		# CVS revision
+my $Version = "0.3.0";			# Version number
+my $CVSRevision = '$Id$';# CVS revision
 
 # Declare variables
 my (
@@ -37,7 +37,8 @@ my (
 	$TemplateFile,	$Verbose,	$VeryVerbose,
 	$OutputFile,	$IfExist,	$WriteTemplateTo,
 	$WriteBackup,	$NoOrphans,	$DeleteNewfile,
-	$ParanoidMode,	$DebugMode,	$OutputBug
+	$ParanoidMode,	$DebugMode,	$OutputBug,
+	$NoTemplateUncommenting
 );	# Scalars
 my (
 	%Config,	
@@ -110,36 +111,80 @@ sub LoadFile {
 # Functions to generate a template
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 sub GenerateTemplate {
+	# @Template is a global array
 	die "\$NewFile not set" unless $NewFile;
+	my %Templ_ConfigOptsFound;	# A hash of all config options found.
+	my $Templ_DummyRun;		# If true GenTemplateReal won't actually change anything in @Template
 	printv "Generating template from $NewFile...\n";
 	open(NEWFILE, "<$NewFile");
 	@Template = <NEWFILE>;
 	close(NEWFILE);
-	foreach (@Template) {
-		my $EOL = "";
-		next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/;	# Check for comments and other funstuff that we don't handle
-		next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
-		next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
-		chomp;						# Remove newlines
-		my $Name = $_;					# Copy $_'s contents to $Name 
-		# Start stripping junk from the line, to figure out the name of the variable
-		$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
-		$Name =~ s/^\s*(\$)//;
-		$Name =~ s/\s+//g;
-		next unless $Name;
-		# Don't do anything if Name exists in %IgnoreOptions
-		$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
-		# Okay, time to find out the values
-		my $LineContents = $_;				# Copy $_'s contents to $LineContents
-		$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
-		# Check if the line ends with ; - in which case we need to append that later
-		if ($LineContents =~ /;\s*$/) {
-			$EOL = ';';
+	# This subroutine is the one that actually goes ahead and generates the template.
+	# It will simply read through the @Template array and parse it.
+	# It doesn't know what is uncommented by ccp and what is really there
+	sub GenTemplateReal {
+		foreach (@Template) {
+			my $EOL = "";
+			next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/; # Check for comments and other funstuff that we don't handle
+			next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
+			next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
+			chomp;						# Remove newlines
+			my $Name = $_;					# Copy $_'s contents to $Name 
+				# Start stripping junk from the line, to figure out the name of the variable
+			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
+			$Name =~ s/^\s*(\$)//;
+			$Name =~ s/\s+//g;
+			next unless $Name;
+			# Set the hash value
+			$Templ_ConfigOptsFound{$Name} = 1;
+			# If this is a dummy run then we just move on without getting down and dirty.
+			next if $Templ_DummyRun;
+			# Don't do anything if Name exists in %IgnoreOptions
+			$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
+			# Okay, time to find out the values
+			my $LineContents = $_;				# Copy $_'s contents to $LineContents
+			$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
+			# Check if the line ends with ; - in which case we need to append that later
+			if ($LineContents =~ /;\s*$/) {
+				$EOL = ';';
+			}
+			# $LineContents is now the part of $_ we want to replace
+			s/(.*=\s*)\Q$LineContents\E/${1}{CCP::CONFIG::$Name}$EOL\n/;
+			printd "Regexp: s/(.*=\\s*)\\Q$LineContents\\E/\${1}{CCP::CONFIG::$Name}$EOL\\n/\n";
+			printvv "Read setting \"$Name\"\n";
 		}
-		# $LineContents is now the part of $_ we want to replace
-		s/(.*=\s*)\Q$LineContents\E/${1}{CCP::CONFIG::$Name}$EOL\n/;
-		printd "Regexp: s/(.*=\\s*)\\Q$LineContents\\E/\${1}{CCP::CONFIG::$Name}$EOL\\n/\n";
-		printvv "Read setting \"$Name\"\n";
+	}
+	# Subroutine that uncomments options in the config file if needed/possible
+	sub Templ_UncommentOptions {
+		foreach (@Template) {
+			next unless m/^\s*[#|\;]/ and m/=/;
+			# Try to figure out the name of the option
+			my $Name = $_;
+			$Name =~ s/^[#|\;]+\s*//;
+			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
+			$Name =~ s/^\s*(\$)//;
+			$Name =~ s/\s+//g;
+			if ($Config{$Name} and not $Templ_ConfigOptsFound{$Name}) {
+				# Uncomment it !
+				s/^[#|\;]+\s*//;
+				printvv "Uncommented $Name\n";
+			}
+		}
+	}
+	# Call the routines
+	unless ($NoTemplateUncommenting) {
+		# Read the template, dummy run of GenTemplateReal
+		$Templ_DummyRun = 1;
+		GenTemplateReal;
+		# Try to uncomment options as needed
+		Templ_UncommentOptions
+		# Real run, make changes to the template
+		$Templ_DummyRun = 0;
+		GenTemplateReal;
+	} else {
+		# Just make changes to the template without attempting to uncomment
+		$Templ_DummyRun = 0;
+		GenTemplateReal;
 	}
 }
 
