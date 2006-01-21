@@ -76,7 +76,7 @@ foreach(<$RootDir/*>) {
 		# If ccp fails, then stop here
 		if ($ReturnValue) {
 			$Failed = 1;
-			$Error = "Nonzero-return-value";
+			$Error = "Nonzero-return-value ($ReturnValue)";
 		} else {	# If not, then continue on with the real test
 			# TODO: Don't use diff.
 			if (system("diff -q $TemporaryFile $_/DESIRED_OUTPUT &>/dev/null")) {
@@ -93,18 +93,16 @@ foreach(<$RootDir/*>) {
 			$TestsFailed++;
 			# Yes...
 			print "failed!\n";
-			print "DIAGNOSTICS:\n";
 			print "Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n";
-			print "ERROR: $Error\n";
-			print "Returned $ReturnValue\n\n";
+			print "ERROR: $Error\n\n";
 		}
 	}
 }
+unlink($TemporaryFile);
 # Display final statistics
 print "\n";
 if ($TestsFailed) {
-	print "$TestsFailed tests failed\n";
+	die "$TestsFailed tests failed\n";
 } else {
 	print "All is well - no tests failed :)\n";
 }
-unlink($TemporaryFile);
