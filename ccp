@@ -113,8 +113,8 @@ sub LoadFile {
 sub GenerateTemplate {
 	# @Template is a global array
 	die "\$NewFile not set" unless $NewFile;
-	my %Templ_ConfigOptsFound;	# A hash of all config options found.
-	my $Templ_DummyRun;		# If true GenTemplateReal won't actually change anything in @Template
+	our %Templ_ConfigOptsFound;	# A hash of all config options found.
+	our $Templ_DummyRun;		# If true GenTemplateReal won't actually change anything in @Template
 	printv "Generating template from $NewFile...\n";
 	open(NEWFILE, "<$NewFile");
 	@Template = <NEWFILE>;
