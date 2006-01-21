@@ -354,6 +354,11 @@ sub Version {
 	print "Common Configuration Parser version $Version\n";
 }
 
+sub FullVersion {
+	Version;
+	print "(CVS Revision $CVSRevision)\n";
+}
+
 sub Help {
 	my $Command = basename($0);
 	print "\n";
@@ -390,6 +395,7 @@ sub Help {
 Help and exit 0 unless @ARGV;
 GetOptions (
 	'version' => sub { Version; exit 0; },
+	'fullversion|full-version' => sub {FullVersion; exit 0; },
 	'h|help' => sub { Help; exit 0; },
 	'f|outputfile=s' => \$OutputFile,
 	'o|oldfile=s' => \$OldFile,
