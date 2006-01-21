@@ -12,17 +12,17 @@
 ##  Daemon -- Run as a stand-alone daemon -- EXPERIMENTAL! BitlBee is not yet
 ##    stable enough to serve lots of users from one process. Because of this
 ##    and other reasons, the use of daemon-mode is *STRONGLY* discouraged,
-##    don't even *think* of reporting bugs when you use this.
+##    don't think about reporting bugs when you use this!
 ##
-# RunMode = Inetd
+RunMode = Inetd
 
 ## DaemonPort/DaemonInterface:
 ##
 ## For RunMode=Daemon, here you can specify on what interface and port the
 ## daemon should be listening for connections.
 ##
-# DaemonInterface = 0.0.0.0
-# DaemonPort = 6667
+DaemonInterface = eth0
+DaemonPort = 6667
 
 ## AuthMode
 ##
@@ -33,13 +33,13 @@
 ##  Registered -- Only allow registered users to use this server; this disables
 ##    the register- and the account command until the user identifies himself.
 ##
-# AuthMode = Open
+AuthMode = Closed
 
 ## AuthPassword
 ##
 ## Password the user should enter when logging into a closed BitlBee server.
 ##
-# AuthPassword = ItllBeBitlBee   ## Heh.. Our slogan. ;-)
+AuthPassword = test
 
 ## HostName
 ##
