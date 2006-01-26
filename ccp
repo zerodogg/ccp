@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-#
+
 # The modules we want to use
 use strict;				# Make my coding strict
 use warnings;				# Warn me!
@@ -28,24 +28,35 @@ use File::Copy;				# We need to copy files (backup)
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
-my $Version = "0.3.0";			# Version number
+my $Version = "0.4.0";			# Version number
 my $CVSRevision = '$Id$';# CVS revision
 
 # Declare variables
-my (
+our (
 	$Type,		$OldFile,	$NewFile,
 	$TemplateFile,	$Verbose,	$VeryVerbose,
 	$OutputFile,	$IfExist,	$WriteTemplateTo,
 	$WriteBackup,	$NoOrphans,	$DeleteNewfile,
 	$ParanoidMode,	$DebugMode,	$OutputBug,
-	$NoTemplateUncommenting
+	$NoTemplateUncommenting,	$ConfType
 );	# Scalars
-my (
+our (
 	%Config,	
 );	# Hashes
-my (
+our (
 	@Template,	@IgnoreOptions,	
 );	# Arrays
+
+# This hash contains the settings that the user can modify.
+# It's used as an alternative to havving one commandline options for
+# each option so that we don't have a flood of commandline options available.
+our %UserSettings = (
+	NoOrphans => 0,
+	NoTemplateUncommenting => 0,
+);
+# TODO: Write --set which sets the option to a true (1) value.
+# Do we need --unset ?
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Verbosity functions
@@ -71,247 +82,25 @@ sub printd {
 	print "DEBUG: $_[0]" if $DebugMode;
 }
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Functions for loading the files
+# Subroutine that loads the type
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sub LoadFile {
-	die "LoadFile got a nonexistant file supplied!" unless -e $_[0];
-	my %ParanoiaHash if $ParanoidMode;
-	printv "Loading and parsing \"$_[0]\"\n";
-	open(FILE, "<$_[0]");
-	# Parse and put into the hash
-	foreach (<FILE>) {
-		chomp;
-		s/^\s+//;               # Strip leading whitespace
-		s/\s+$//;               # Strip trailing whitespace
-		next if m#^<.*#;	# Skip lines beginning with < (tags, php config files - this type doesn't support XML configs anyway)
-		next if m#^\?>.*#;	# Skip lines beginning with ?> (php closing tag)
-		next if /^(#|\/\*|:|;|\*)/; # Skip comments
-		next if /^\[/;		# We can't do anything with section headers so we skip them
-		s/;$//;			# Strip trailing ; 
-		s/^\$//;		# Strip leading $
-		next unless length;	# Empty?
-		next unless /=/;	# No "=" in the line means nothing for us to do
-		my ($var, $value) = split(/\s*=\s*/, $_, 2);    # Set the variables
-		printvv "Ignoring key $var as requested" and next if grep $_ eq $var, @IgnoreOptions;
-		printvv "Read key value pair: $var = $value\n";
-		$Config{$var} = $value;
-		$ParanoiaHash{$var}++ if $ParanoidMode;
-	}
-	close(FILE);
-	# If we're not in ParanoidMode then we're all done
-	return(1) unless $ParanoidMode;
-	printvv "Running paranoia test on $_[0]\n";
-	foreach(sort(keys(%ParanoiaHash))) {
-		print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$_} times)\n" if $ParanoiaHash{$_} gt 1;
-	}
-}
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Functions to generate a template
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-sub GenerateTemplate {
-	# @Template is a global array
-	die "\$NewFile not set" unless $NewFile;
-	our %Templ_ConfigOptsFound;	# A hash of all config options found.
-	our $Templ_DummyRun;		# If true GenTemplateReal won't actually change anything in @Template
-	printv "Generating template from $NewFile...\n";
-	open(NEWFILE, "<$NewFile");
-	@Template = <NEWFILE>;
-	close(NEWFILE);
-	# This subroutine is the one that actually goes ahead and generates the template.
-	# It will simply read through the @Template array and parse it.
-	# It doesn't know what is uncommented by ccp and what is really there
-	sub GenTemplateReal {
-		foreach (@Template) {
-			my $EOL = "";
-			next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/; # Check for comments and other funstuff that we don't handle
-			next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
-			next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
-			chomp;						# Remove newlines
-			my $Name = $_;					# Copy $_'s contents to $Name 
-				# Start stripping junk from the line, to figure out the name of the variable
-			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
-			$Name =~ s/^\s*(\$)//;
-			$Name =~ s/\s+//g;
-			next unless $Name;
-			# Set the hash value
-			$Templ_ConfigOptsFound{$Name} = 1;
-			# If this is a dummy run then we just move on without getting down and dirty.
-			next if $Templ_DummyRun;
-			# Don't do anything if Name exists in %IgnoreOptions
-			$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
-			# Okay, time to find out the values
-			my $LineContents = $_;				# Copy $_'s contents to $LineContents
-			$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
-			# Check if the line ends with ; - in which case we need to append that later
-			if ($LineContents =~ /;\s*$/) {
-				$EOL = ';';
+sub LoadConfigType {
+	my $Loaded;
+	$ConfType = "keyvalue" unless $ConfType;
+	for (dirname(Cwd::realpath($0)), "/usr/share/ccp", "/usr/local/ccp" ) {
+		if ( -d "$_/conftypes" and -r "$_/conftypes/$ConfType.pl") {
+			unless (my $ConfTypeDo = do("$_/conftypes/$ConfType.pl")) {
+				die "Couldn't parse conftype \"$ConfType\" at \"$_/conftypes/$ConfType.pl\": $@" if $@;
+				die "Couldn't do() conftype \"$ConfType\" at \"$_/conftypes/$ConfType.pl\": $!"    unless defined $ConfTypeDo;
+				die "Couldn't load conftype \"$ConfType\" at \"$_/conftypes/$ConfType.pl\"" unless $ConfTypeDo;
 			}
-			# $LineContents is now the part of $_ we want to replace
-			s/(.*=\s*)\Q$LineContents\E/${1}{CCP::CONFIG::$Name}$EOL\n/;
-			printd "Regexp: s/(.*=\\s*)\\Q$LineContents\\E/\${1}{CCP::CONFIG::$Name}$EOL\\n/\n";
-			printvv "Read setting \"$Name\"\n";
+			$Loaded = 1;
+			last;
 		}
 	}
-	# Subroutine that uncomments options in the config file if needed/possible
-	sub Templ_UncommentOptions {
-		foreach (@Template) {
-			next unless m/^\s*[#|\;]/ and m/=/;
-			# Try to figure out the name of the option
-			my $Name = $_;
-			$Name =~ s/^[#|\;]+\s*//;
-			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
-			$Name =~ s/^\s*(\$)//;
-			$Name =~ s/\s+//g;
-			if ($Config{$Name} and not $Templ_ConfigOptsFound{$Name} and not (grep $_ eq $Name, @IgnoreOptions)) {
-				# Uncomment it !
-				s/^[#|\;]+\s*//;
-				printvv "Uncommented $Name\n";
-				$Templ_ConfigOptsFound{$Name} = 1;
-			}
-		}
-	}
-	# Call the routines
-	unless ($NoTemplateUncommenting) {
-		# Read the template, dummy run of GenTemplateReal
-		$Templ_DummyRun = 1;
-		GenTemplateReal;
-		# Try to uncomment options as needed
-		Templ_UncommentOptions
-		# Real run, make changes to the template
-		$Templ_DummyRun = 0;
-		GenTemplateReal;
-	} else {
-		# Just make changes to the template without attempting to uncomment
-		$Templ_DummyRun = 0;
-		GenTemplateReal;
-	}
-	# Empty the hash
-	%Templ_ConfigOptsFound = ();
-}
-
-# This function just outputs the template to a file instead of
-# actually merging files.
-sub WriteTemplate {
-	# First, verify $WriteTemplateTo
-	if ( -e $WriteTemplateTo ) {
-		die "I can't write to \"$WriteTemplateTo\"\n" unless -w $WriteTemplateTo;
-	} else {
-		my $TestBase = dirname($WriteTemplateTo);
-		if ($WriteTemplateTo eq $TestBase) {
-			$TestBase = "./";
-		}
-		die "I can't write to the directory \"$TestBase\"\n" unless -w $TestBase;
-	}
-	printnv "Creating template from \"$NewFile\"... ";
-	# Now, create the template
-	GenerateTemplate;
-	# Now, write the template
-	printv "Writing template to \"$WriteTemplateTo\"\n";
-	open(TEMPLATEOUT, ">$WriteTemplateTo");
-	foreach (@Template) {
-		print TEMPLATEOUT $_;
-	}
-	close(TEMPLATEOUT);
-	printnv "Done\n";
-}
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Functions for outputting the file
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-sub OutputFile {
-	die "\$OutputFile not set" unless $OutputFile;
-	my $OrphansFound;
-	# Find out which method to use for the template:
-	if ($TemplateFile) {	# Use the already generated $TemplateFile
-		printv "Loading template ($TemplateFile)\n";
-		printvv "Opening $TemplateFile\n";
-		open(TEMPLATE, "<$TemplateFile");
-		@Template = <TEMPLATE>;
-		close(TEMPLATE);
-	} else {		# Use a template auto-generated on-the-fly
-		GenerateTemplate;
-	}
-	printv "Merging settings into $OutputFile\n";
-	# Merge the settings into the template
-	foreach my $key (keys %Config) {
-		my $LineNo = 0 if $DebugMode;
-		printvv "Setting $key to $Config{$key}\n";
-		printd "{CCP::CONFIG::$key}\n";
-		foreach (@Template) {
-			$LineNo++ if $DebugMode;
-			if (s/{CCP::CONFIG::\Q$key\E}/$Config{$key}/) {
-				# If we replaced something then we delete the key.
-				# A key should never be used more than once, you'll need an ini-type for that to work.
-				printd "Match of $key on line $LineNo, key deleted - moving on to next key\n" if $DebugMode;
-				delete($Config{$key});
-				last;
-			}
-		}
-	}
-	# Remove options that are in the template but not in any of the other files.
-	# Shouldn't happen with auto-generated templates - if it does then it's a bug.
-	foreach (@Template) {
-		if (s/{CCP::CONFIG::(.+)}//) {
-			if ($TemplateFile) {
-				printv "Warning: Option found in template but not in oldfile or newfile: $1\n";
-			} else {
-				# BUG!
-				print "\nWARNING: Option found in template but not in oldfile or newfile: $1\n";
-				print "This reflects a bug in CCP! Please report it to http://ccp.nongnu.org/\n";
-				# Force a backup to be written even if it isn't requested
-				unless ($WriteBackup) {
-					print "Forcing CCP to write a backup file - but still continuing\n";
-					$WriteBackup = "$OutputFile.ccpbackup";
-				}
-			}
-		}
-	}
-	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
-	if ($Verbose or $NoOrphans) {
-		foreach my $key (keys %Config) {
-			unless (grep $_ eq $key, @IgnoreOptions) {
-				if ($TemplateFile) {
-					printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $key\n";
-				} else {
-					printv "Warning: Orphaned option (found in oldfile but not in the newfile): $key\n";
-				}
-				$OrphansFound = 1;
-			}
-		}
-		if ($OrphansFound and $NoOrphans) {
-			printnv "failed - orphaned options detected.\n";
-			printv "Exiting as requested\n";
-			exit 0;
-		}
-	}
-	# Backup
-	if ($WriteBackup) {
-		if (-e $OutputFile) {
-			copy($OutputFile, $WriteBackup);
-			printv "Backed up \"$OutputFile\" to \"$WriteBackup\"\n";
-		} else {
-			printvv "I won't back up \"$OutputFile\", it doesn't exist so there's nothing to backup.\n";
-		}
-	}
-	# Write it out
-	open(OUTPUTFILE, ">$OutputFile");
-	printv "Writing $OutputFile\n";
-	foreach (@Template) {
-			print OUTPUTFILE "$_";
-	}
-	close(OUTPUTFILE);
-	printvv "Okay, written\n";
-	# Check if we should delete $NewFile
-	if ($DeleteNewfile) {
-		if (-w $NewFile) {
-			printv "Deleting $NewFile\n";
-			unlink($NewFile) or printv "FAILED!: $!";
-		} else {
-			printvv "User requested that I should delete \"$NewFile\" but I can't write to it, ignoring request.\n";
-		}
+	unless ($Loaded) {
+		die "Unrecognized configuration type: $ConfType\n";
 	}
 }
 
@@ -373,7 +162,8 @@ sub OutputDebug {
 		}
 	} else { # Include our autogenerated template
 		print DEBUG_OUT "echo 'Template type: automatic'\n";
-		GenerateTemplate;
+		#CCP::CT::GenerateTemplate();
+		GenerateTemplate();
 		print DEBUG_OUT "cat << __COMMON_CONFIGURATION_PARSER__EOF > templatefile.ccp_debug\n";
 		foreach(@Template) {
 			s/\$/\\\$/g;	# Escape \$
@@ -386,6 +176,7 @@ sub OutputDebug {
 	print DEBUG_OUT "# END OF DEBUGGING SCRIPT\n";
 	print "Done, debugging information written to ./ccpdebug\n";
 }
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Help function declerations
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -421,9 +212,9 @@ sub Help {
 	PrintHelp("-d", "--delete", "Delete --newfile if it is writeable by me and the configuration");
 	PrintHelp("", "", "file is upgraded successfully");
 	PrintHelp("-i", "--ifexists", "Exit silently if --newfile doesn't exist");
-	PrintHelp("-r", "--noorphans", "Exit if orphaned options are detected");
+	PrintHelp("-r", "--noorphans", "Exit if orphaned options are detected");	# TODO: Deprecated
 	PrintHelp("", "", "(see manpage for more information");
-	PrintHelp("-u", "--no-uncomment", "Don't uncomment options automatically in");
+	PrintHelp("-u", "--no-uncomment", "Don't uncomment options automatically in");	# TODO: Deprecated
 	PrintHelp("","", "autogenerated templates.");
 	PrintHelp("-g", "--ignoreopt", "Keep the setting from --newfile for this option");
 	PrintHelp("", "", "(can be supplied more than once)");
@@ -440,10 +231,21 @@ sub Help {
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Exit on CCP_DISABLE
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Exit if the environment variable is set
+if (defined($ENV{CCP_DISABLE}) and $ENV{CCP_DISABLE} eq 1) {
+	printv "Exiting as requested by the CCP_DISABLE environment variable\n";
+	exit 0;
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Commandline parameter parsing
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Help and exit 0 unless @ARGV;
 GetOptions (
+	
 	'version' => sub { Version; exit 0; },
 	'fullversion|full-version' => sub {FullVersion; exit 0; },
 	'h|help' => sub { Help; exit 0; },
@@ -451,16 +253,16 @@ GetOptions (
 	'o|oldfile=s' => \$OldFile,
 	'n|newfile=s' => \$NewFile,
 	'p|template=s' => \$TemplateFile,
-	't|type=s' => sub { die "--type isn't implemented in this version of CCP\n"},
+	't|type=s' => \$ConfType, 
 	'v|verbose' => \$Verbose,
-	'u|nouncomment|no-uncomment' => \$NoTemplateUncommenting,
+	'u|nouncomment|no-uncomment' => \$NoTemplateUncommenting,	#TODO: Deprecate
 	'V|veryverbose' => sub { $Verbose = 1;
 		$VeryVerbose = 1;
 	},
 	'i|ifexist|ifexists' => \$IfExist,
 	'writetemplate=s' => \$WriteTemplateTo,
 	'b|backup:s' => \$WriteBackup,
-	'r|noorphans' => \$NoOrphans,
+	'r|noorphans' => \$NoOrphans,					#TODO: Deprecate
 	'd|delete' => \$DeleteNewfile,
 	'g|ignoreopt=s' => \@IgnoreOptions,
 	'P|paranoid' => \$ParanoidMode,
@@ -472,14 +274,6 @@ GetOptions (
 	},
 	'bug' => \$OutputBug,
 ) or die "Run ", basename($0), " --help for more information\n";
-# We need --newfile for everything
-die "No --newfile supplied\n" unless $NewFile;
-
-# Exit if the environment variables are set
-if (defined($ENV{CCP_DISABLE}) and $ENV{CCP_DISABLE} eq 1) {
-	printv "Exiting as requested by the CCP_DISABLE environment variable\n";
-	exit 0;
-}
 
 # Set the verbosity settings according to environment variables
 if (defined($ENV{CCP_VERBOSE}) and $ENV{CCP_VERBOSE} eq 1) {
@@ -498,6 +292,11 @@ if ($ParanoidMode) {
 	$Verbose = 1;
 }
 
+# Load and verify type
+LoadConfigType;
+# We need --newfile for everything
+die "No --newfile supplied\n" unless $NewFile;
+
 # Verify existance of $NewFile and exit as requested if needed
 if (!-e $NewFile) {
 	exit 0 if $IfExist;
@@ -508,12 +307,10 @@ if (!-e $NewFile) {
 die "$NewFile does not exist\n" unless -e $NewFile;
 die "$NewFile is not a normal file\n" unless -f $NewFile;
 die "$NewFile is not readable by me\n" unless -r $NewFile;
-
-
 # If $WriteTemplateTo is set to something then we should just run WriteTemplate
 # and then exit
 if ($WriteTemplateTo) {
-	WriteTemplate;
+	WriteTemplate() or die("\n");
 	exit 0;
 }
 
@@ -588,8 +385,8 @@ if ($DebugMode) {
 	printd "$CVSRevision\n";
 }
 # Load settings from the files
-LoadFile($NewFile);
-LoadFile($OldFile);
+LoadFile($NewFile) or die("\n");
+LoadFile($OldFile) or die("\n");
 # Output the new file
-OutputFile;
+OutputFile() or die("\n");
 printnv "done\n";
