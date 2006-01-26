@@ -3,6 +3,13 @@ Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 
 TODO for 0.4
 - - - - - - -
+- Add support for supplying different --type(s)
+	- Split default one into default
+	- If no --type supplied use default
+- Add support for --renamedoption oldname=newname
+
+TODO for 0.5
+- - - - - - -
 - Implement automatic addition of orphaned options to the end of the configuration
   file, as long as the config file isn't a ini-style file (no [-headers allowed]).
    (On the other hand, perhaps we should dump them all with any style.)
@@ -15,13 +22,7 @@ TODO for 0.4
   appended after the ending PHP line.
 
 Longer term TODO list:
-- - - - - - - - - - - -
-- Add support for supplying different --type(s)
-	- So that ccp can upgrade different forms of config files
-	- Read the list of supported types from a directory and do(); the file
-	  matching the supplied type (?)
-	- Adding support for ini-type should be easy, even without libconf
+- - - - - - - - - - -
 - Use libconf for additional configuration parsing
-- Split out default type into a --type
 
 $Id$
