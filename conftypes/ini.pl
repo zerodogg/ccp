@@ -32,7 +32,7 @@ sub LoadFile ($) {
 							# files that doesn't have a header
 							# for the first part of the file
 	die "LoadFile got a nonexistant file supplied!" unless -e $_[0];
-	my %ParanoiaHash if $ParanoidMode;
+	my %ParanoiaHash if $UserSettings{ParanoidMode};
 	printv "Loading and parsing \"$_[0]\"\n";
 	open(FILE, "<$_[0]");
 	# Parse and put into the hash
@@ -57,11 +57,11 @@ sub LoadFile ($) {
 		printvv "Ignoring key $var as requested" and next if grep $_ eq $var, @IgnoreOptions;
 		printvv "Read key value pair: $var = $value\n";
 		$Config{$CurrentHeader}{$var} = $value;
-		$ParanoiaHash{$CurrentHeader}{$var}++ if $ParanoidMode;
+		$ParanoiaHash{$CurrentHeader}{$var}++ if $UserSettings{ParanoidMode};
 	}
 	close(FILE);
 	# If we're not in ParanoidMode then we're all done
-	return(1) unless $ParanoidMode;
+	return(1) unless $UserSettings{ParanoidMode};
 	printvv "Running paranoia test on $_[0]\n";
 	foreach my $CurrParaHeader (sort(keys(%ParanoiaHash))) {
 		foreach(sort(keys(%{$ParanoiaHash{$CurrParaHeader}}))) {

@@ -19,7 +19,7 @@
 
 # NOTE: Don't run this file directly, run ccp --type keyvalue
 
-my $CCP_ConfTypeVer = "1";	# Set the version of the CCP ConfigType spec this
+$CCP_ConfTypeVer = "1";		# Set the version of the CCP ConfigType spec this
 				# obeys.
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -28,7 +28,7 @@ my $CCP_ConfTypeVer = "1";	# Set the version of the CCP ConfigType spec this
 
 sub LoadFile {
 	die "LoadFile got a nonexistant file supplied!" unless -e $_[0];
-	my %ParanoiaHash if $ParanoidMode;
+	my %ParanoiaHash if $UserSettings{ParanoidMode};
 	printv "Loading and parsing \"$_[0]\"\n";
 	open(FILE, "<$_[0]");
 	# Parse and put into the hash
@@ -48,11 +48,11 @@ sub LoadFile {
 		printvv "Ignoring key $var as requested" and next if grep $_ eq $var, @IgnoreOptions;
 		printvv "Read key value pair: $var = $value\n";
 		$Config{$var} = $value;
-		$ParanoiaHash{$var}++ if $ParanoidMode;
+		$ParanoiaHash{$var}++ if $UserSettings{ParanoidMode};
 	}
 	close(FILE);
 	# If we're not in ParanoidMode then we're all done
-	return(1) unless $ParanoidMode;
+	return(1) unless $UserSettings{ParanoidMode};
 	printvv "Running paranoia test on $_[0]\n";
 	foreach(sort(keys(%ParanoiaHash))) {
 		print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$_} times)\n" if $ParanoiaHash{$_} gt 1;
@@ -125,7 +125,7 @@ sub GenerateTemplate {
 		}
 	}
 	# Call the routines
-	unless ($NoTemplateUncommenting) {
+	unless ($UserSettings{NoTemplateUncommenting}) {
 		# Read the template, dummy run of GenTemplateReal
 		$Templ_DummyRun = 1;
 		GenTemplateReal;
@@ -222,7 +222,7 @@ sub OutputFile {
 		}
 	}
 	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
-	if ($Verbose or $NoOrphans) {
+	if ($Verbose or $UserSettings{NoOrphans}) {
 		foreach my $key (keys %Config) {
 			unless (grep $_ eq $key, @IgnoreOptions) {
 				if ($TemplateFile) {
@@ -233,7 +233,7 @@ sub OutputFile {
 				$OrphansFound = 1;
 			}
 		}
-		if ($OrphansFound and $NoOrphans) {
+		if ($OrphansFound and $UserSettings{NoOrphans}) {
 			printnv "failed - orphaned options detected.\n";
 			printv "Exiting as requested\n";
 			exit 0;

@@ -30,9 +30,16 @@ my $CVSRevision = '$Id$';		# CVS revision
 my $RootDir = dirname($0);		# The dir containing ccp-testsuite
 my $CCPBin;				# The path to ccp
 my $TestsFailed;			# The number of failed tests
+my $Verbose;
+$_ = "@ARGV";
+/-v/ and $Verbose = 1;
 my ($TMPFHandle, $TemporaryFile) = tempfile or die "Failed to create temporary file\n";
 
 print "ccp-testsuite version $Version running\n\n";
+
+sub printv ($) {
+	print "$_[0]" if $Verbose;
+}
 
 # Detect ccp:
 if (-x "$RootDir/../ccp") {
@@ -73,6 +80,7 @@ foreach(<$RootDir/*>) {
 		}
 		# If the temp file already exists, remove it.
 		unlink($TemporaryFile) if -e $TemporaryFile;
+		printv "Running ccp: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null\n";
 		# Run ccp, silently
 		$ReturnValue = system("$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null");
 		# If ccp fails, then stop here
@@ -95,12 +103,12 @@ foreach(<$RootDir/*>) {
 		# Did we fail?
 		unless ($Failed) {
 			# No :D
-			print "okay :)\n";
+			print "okay :)\n" unless $Verbose;
 		} else {
 			$TestsFailed++;
 			# Yes...
-			print "failed!\n";
-			print " Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n";
+			print "failed!\n" unless $Verbose;
+			print " Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n" unless $Verbose;
 			print " ERROR: $Error\n";
 		}
 	}

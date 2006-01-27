@@ -37,7 +37,7 @@ our (
 	$TemplateFile,	$Verbose,	$VeryVerbose,
 	$OutputFile,	$IfExist,	$WriteTemplateTo,
 	$WriteBackup,	$DeleteNewfile,
-	$ParanoidMode,	$DebugMode,	$OutputBug,
+	$DebugMode,	$OutputBug,
 	$ConfType,
 	$CCP_ConfTypeVer
 );	# Scalars
@@ -271,12 +271,14 @@ GetOptions (
 	'D|debug' => sub {
 		$DebugMode = 1;
 		$VeryVerbose = 1;
-		$ParanoidMode = 1;
+		$UserSettings{ParanoidMode} = 1;
 		$Verbose = 1;
 	},
 	'bug' => \$OutputBug,
 	's|set=s' => sub {
-		$UserSettings{$_[0]} = 1;
+		foreach (split(/\s+/, $_[1])) {
+				$UserSettings{$_} = 1;
+			}
 	},
 	# Deprecated/old: TODO FIXME
 	'r|noorphans' => sub {
@@ -288,8 +290,6 @@ GetOptions (
 		print "CCP: warning: deprecated commandline option: --no-uncomment. Use --set NoUncomment\n";
 	},
 	'P|paranoid' => sub {
-		$UserSettings{ParanoidMode} = 1;
-		$ParanoidMode = 1;
 		print "CCP: warning: deprecated commandline option: --paranoid. Use --set ParanoidMode\n";
 	},
 ) or die "Run ", basename($0), " --help for more information\n";
@@ -304,9 +304,9 @@ if (defined($ENV{CCP_VERYVERBOSE}) and $ENV{CCP_VERYVERBOSE} eq 1) {
 }
 # Set paranoia settings
 if (defined($ENV{CCP_PARANOID}) and $ENV{CCP_PARANOID} eq 1) {
-	$ParanoidMode = 1;
+	$UserSettings{ParanoidMode} = 1;
 }
-if ($ParanoidMode) {
+if ($UserSettings{ParanoidMode}){
 	print "Paranoid mode is on!\n";
 	$Verbose = 1;
 }
