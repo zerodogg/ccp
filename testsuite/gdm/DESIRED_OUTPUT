@@ -307,7 +307,7 @@ GlobalFaceDir=/usr/share/faces/
 # although gdm will be able to read a standard locale.alias file as well.
 #LocaleFile=/etc/X11/gdm/locale.alias
 # Logo shown in the standard greeter
-#Logo=/usr/share/pixmaps/gdm-foot-logo.png
+Logo=
 # The standard greeter should shake if a user entered the wrong username or
 # password.  Kind of cool looking
 #Quiver=true
@@ -446,7 +446,8 @@ Enable=false
 # and they will always be started.  Each line must start with a unique
 # number and that will be the display number of that server.  Usually just
 # the 0 server is used.
-0=Standard#1=Standard
+0=Standard
+#1=Standard
 # Note the VTAllocation and FirstVT keys on linux and freebsd.
 # Don't add any vt<number> arguments if VTAllocation is on, and set FirstVT to
 # be the first vt available that your gettys don't grab (gettys are usually
@@ -456,11 +457,14 @@ Enable=false
 # X servers will just not get any extra arguments then.
 #
 # If you want to run an X terminal you could add an X server such as this
-0=Terminal -query serverhostname# or for a chooser (optionally serverhostname could be localhost)
-0=Terminal -indirect serverhostname#
+#0=Terminal -query serverhostname
+# or for a chooser (optionally serverhostname could be localhost)
+#0=Terminal -indirect serverhostname
+#
 # If you wish to run the XDMCP chooser on the local display use the following
 # line
-0=Chooser
+#0=Chooser
+
 ## Note:
 # is your X server not listening to TCP requests?  Perhaps you should look
 # at the security/DisallowTCP setting!

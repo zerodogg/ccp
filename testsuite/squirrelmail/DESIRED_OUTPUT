@@ -7,6 +7,7 @@
 
 global $version;
 $config_version = '1.4.0';
+
 $config_use_color = 1;
 
 $org_name      = "SquirrelMail";
