@@ -80,13 +80,13 @@ sub GenerateTemplate {
 			next if $_ =~ /^\s*[#|<|\?>|\*|\/\*|;|:|@|\[]/; # Check for comments and other funstuff that we don't handle
 			next if $_ =~ /^\s*$/;				# If the line is empty, then skip ahead
 			next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
-			chomp;						# Remove newlines
 			my $Name = $_;					# Copy $_'s contents to $Name 
 				# Start stripping junk from the line, to figure out the name of the variable
 			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
 			$Name =~ s/^\s*(\$)//;
 			$Name =~ s/\s+//g;
-			next unless $Name;
+			chomp($Name);
+			next unless length($Name);
 			# Set the hash value
 			$Templ_ConfigOptsFound{$Name} = 1;
 			# If this is a dummy run then we just move on without getting down and dirty.
@@ -94,6 +94,7 @@ sub GenerateTemplate {
 			# Don't do anything if Name exists in %IgnoreOptions
 			$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
 			# Okay, time to find out the values
+			chomp;						# Remove newlines
 			my $LineContents = $_;				# Copy $_'s contents to $LineContents
 			$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
 			# Check if the line ends with ; - in which case we need to append that later

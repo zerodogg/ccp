@@ -65,9 +65,10 @@ sub LoadFile ($) {
 	printvv "Running paranoia test on $_[0]\n";
 	foreach my $CurrParaHeader (sort(keys(%ParanoiaHash))) {
 		foreach(sort(keys(%{$ParanoiaHash{$CurrParaHeader}}))) {
-			print "PARANOIA WARNING: $_ was seen more than once! (Seen $ParanoiaHash{$CurrParaHeader}{$_} times)\n" if $ParanoiaHash{$_} gt 1;
+			print "PARANOIA WARNING: [$CurrParaHeader]->$_ was seen more than once! (Seen $ParanoiaHash{$CurrParaHeader}{$_} times)\n" if $ParanoiaHash{$_} gt 1;
 		}
 	}
+	return(1);
 }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -102,20 +103,23 @@ sub GenerateTemplate {
 				next;
 			}
 			next unless $_ =~ /=/;				# If there is no '=' in the line we just skip ahead
-			chomp;						# Remove newlines
 			my $Name = $_;					# Copy $_'s contents to $Name 
 				# Start stripping junk from the line, to figure out the name of the variable
 			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
 			$Name =~ s/^\s*(\$)//;
 			$Name =~ s/\s+//g;
-			next unless $Name;
+			chomp($Name);
+			next unless length($Name);
+			printd "Read: [$CurrentHeader]->$Name\n";
 			# Set the hash value
 			$Templ_ConfigOptsFound{$CurrentHeader}{$Name} = 1;
+			printd "[$CurrentHeader]->$Name == $Templ_ConfigOptsFound{$CurrentHeader}{$Name}\n";
 			# If this is a dummy run then we just move on without getting down and dirty.
 			next if $Templ_DummyRun;
 			# Don't do anything if Name exists in %IgnoreOptions
 			$_ = "$_\n" and next if grep $_ eq $Name, @IgnoreOptions; 
 			# Okay, time to find out the values
+			chomp;						# Remove newlines
 			my $LineContents = $_;				# Copy $_'s contents to $LineContents
 			$LineContents =~ s/.*\Q$Name\E\s*=\s*//;	# Remove the first part of the line
 			# Check if the line ends with ; - in which case we need to append that later
@@ -134,6 +138,7 @@ sub GenerateTemplate {
 			# Handle []-headers
 			if (/^\s*\[(.*)\]/) {
 				$CurrentHeader = $1;
+				printd "Templ_UncommentOptions: Read header [$CurrentHeader]\n";
 				next;
 			}
 			next unless m/^\s*[#|\;]/ and m/=/;
@@ -143,11 +148,15 @@ sub GenerateTemplate {
 			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
 			$Name =~ s/^\s*(\$)//;
 			$Name =~ s/\s+//g;
+			next unless $Name;
 			if ($Config{$CurrentHeader}{$Name} and not $Templ_ConfigOptsFound{$CurrentHeader}{$Name} and not (grep $_ eq $Name, @IgnoreOptions)) {
 				# Uncomment it !
-				s/^[#|\;]+\s*//;
-				printvv "Uncommented [$CurrentHeader]->$Name\n";
-				$Templ_ConfigOptsFound{$Name} = 1;
+				if (s/^[#|\;]+\s*//) {
+					printvv "Uncommented [$CurrentHeader]->$Name\n";
+					$Templ_ConfigOptsFound{$Name} = 1;
+				} else {
+					printvv "Failed to uncomment [$CurrentHeader]->$Name\n";
+				}
 			}
 		}
 	}
@@ -231,7 +240,6 @@ sub OutputFile {
 				}
 			}
 		}
-		delete $Config{$header}
 	}
 	# Remove options that are in the template but not in any of the other files.
 	# Shouldn't happen with auto-generated templates - if it does then it's a bug.
@@ -253,14 +261,16 @@ sub OutputFile {
 	}
 	# If we're verbose (or if the user supplied --noorphans) then test for orphaned keys
 	if ($Verbose or $UserSettings{NoOrphans}) {
-		foreach my $key (keys %Config) {
-			unless (grep $_ eq $key, @IgnoreOptions) {
-				if ($TemplateFile) {
-					printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): $key\n";
-				} else {
-					printv "Warning: Orphaned option (found in oldfile but not in the newfile): $key\n";
+		foreach my $header (keys %Config) {
+			foreach my $key (keys %{$Config{$header}}) {
+				unless (grep $_ eq $key, @IgnoreOptions) {
+					if ($TemplateFile) {
+						printv "Warning: Orphaned option (found in newfile or oldfile but not in the template): [$header]->$key\n";
+					} else {
+						printv "Warning: Orphaned option (found in oldfile but not in the newfile): [$header]->$key\n";
+					}
+					$OrphansFound = 1;
 				}
-				$OrphansFound = 1;
 			}
 		}
 		if ($OrphansFound and $UserSettings{NoOrphans}) {
