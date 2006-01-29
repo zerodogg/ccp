@@ -25,6 +25,7 @@ use File::Basename;			# Needed to find out our directory and name
 use Cwd;				# Needed for getcwd
 use Getopt::Long;			# Commandline parsing
 use File::Copy;				# We need to copy files (backup)
+use Data::Dumper; #FIXME
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 
@@ -296,6 +297,7 @@ GetOptions (
 		print "CCP: warning: deprecated commandline option: --no-uncomment. Use --set NoUncomment\n";
 	},
 	'P|paranoid' => sub {
+		$UserSettings{ParanoidMode} = 1;
 		print "CCP: warning: deprecated commandline option: --paranoid. Use --set ParanoidMode\n";
 	},
 ) or die "Run ", basename($0), " --help for more information\n";
