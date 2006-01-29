@@ -25,7 +25,6 @@ use File::Basename;			# Needed to find out our directory and name
 use Cwd;				# Needed for getcwd
 use Getopt::Long;			# Commandline parsing
 use File::Copy;				# We need to copy files (backup)
-use Data::Dumper; #FIXME
 # Allow bundling of options with GeteOpt
 Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
 

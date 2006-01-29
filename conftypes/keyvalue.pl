@@ -117,7 +117,7 @@ sub GenerateTemplate {
 			$Name =~ s/^([^\n|^=]+)\s*=\s*.*/$1/;
 			$Name =~ s/^\s*(\$)//;
 			$Name =~ s/\s+//g;
-			if ($Config{$Name} and not $Templ_ConfigOptsFound{$Name} and not (grep $_ eq $Name, @IgnoreOptions)) {
+			if (defined($Config{$Name}) and not defined($Templ_ConfigOptsFound{$Name}) and not (grep $_ eq $Name, @IgnoreOptions)) {
 				# Uncomment it !
 				s/^[#|\;]+\s*//;
 				printvv "Uncommented $Name\n";

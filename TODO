@@ -1,24 +1,14 @@
 TODO list for Common Configuration Parser.
 Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 
-TODO for 0.4
-- - - - - - -
-- Add support for supplying different --type(s)
-	- Split default one into default
-	- If no --type supplied use default
+TODO for 0.4.5
+- - - - - - - -
 - Add support for --renamedoption oldname=newname
 
 TODO for 0.5
 - - - - - - -
 - Implement automatic addition of orphaned options to the end of the configuration
-  file, as long as the config file isn't a ini-style file (no [-headers allowed]).
-   (On the other hand, perhaps we should dump them all with any style.)
-   In addition to this We should attempt to take the comments found above the
-   setting in the old config and append them to the new, lastly we should add a
-   comment (would require detection of which comments are used) above the settings
-   that wasn't there but was appended. It should be possible to disable this
-   via commandline options and via environment variables.
-  This would require us to autodetecty php-style files and make sure that nothing gets
+  file. This would require us to autodetect php-style files and make sure that nothing gets
   appended after the ending PHP line.
 
 Longer term TODO list:
