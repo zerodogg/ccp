@@ -55,9 +55,8 @@ our %UserSettings = (
 	NoOrphans => 0,
 	NoTemplateUncommenting => 0,
 	ParanoidMode => 0,
+	AllowOrphans => 0,
 );
-# TODO: Write --set which sets the option to a true (1) value.
-# FIXME: Deprecate --nooprhans --no-uncomment and --paranoid
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Verbosity functions
@@ -320,6 +319,25 @@ if ($UserSettings{ParanoidMode}){
 
 # Load and verify type
 LoadConfigType;
+
+# Set NoOrphans/AllowOrphans settings
+# 
+# The default will change in 0.5, this will be removed then and replaced by a
+# cleaner solution
+unless ($UserSettings{NoOrphans} or $UserSettings{AllowOrphans}) {
+	warn "WARNING: The default behaviour of CCP will change in the next version.\nSee the ccp manpage SETTINGS->AllowOrphans for more information\n";
+	$UserSettings{AllowOrphans} = 1;
+}
+
+if ($UserSettings{AllowOrphans} and $UserSettings{NoOrphans}) {
+	warn "Conflicting settings: AllowOrphans and NoOrphans, using NoOrphans\n";
+	$UserSettings{AllowOrphans} = 0;
+}
+
+if ($UserSettings{AllowOrphans}) {
+	$UserSettings{NoOrphans} = 0;
+}
+
 # We need --newfile for everything
 die "No --newfile supplied\n" unless $NewFile;
 
