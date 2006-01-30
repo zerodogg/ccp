@@ -1,11 +1,12 @@
 TODO list for Common Configuration Parser.
 Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 
-TODO for 0.4.5
+TODO for 0.5
 - - - - - - - -
 - Add support for --renamedoption oldname=newname
+- Make NoOrphans default
 
-TODO for 0.5
+TODO for 0.6
 - - - - - - -
 - Implement automatic addition of orphaned options to the end of the configuration
   file. This would require us to autodetect php-style files and make sure that nothing gets
