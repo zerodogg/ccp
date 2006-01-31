@@ -1,6 +1,15 @@
 TODO list for Common Configuration Parser.
 Patches welcome, submit on https://savannah.nongnu.org/patch/?group=ccp
 
+TODO for 0.4.1
+- - - - - - - -
+- Prefix warnings with CCP:
+- Fix errors in the manpage (still talks about --noorphans for instance)
+- Add @IgnoreOptions to the bug file
+- Add the --type to the bug file
+- if (@ARGV =~ /--bug/) { my @BUG_ARGV = @ARGV }; ?
+- Fix manpage coding errors (see the html generated one)
+
 TODO for 0.5
 - - - - - - - -
 - Add support for --renamedoption oldname=newname
