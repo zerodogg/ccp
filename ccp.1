@@ -15,7 +15,7 @@
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program; if not, write to the Free Software Foundation, Inc.,
 .\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
-.TH CCP 1 "January 2006" "Common Configuration Parser 0.4" "User Manuals"
+.TH CCP 1 "January 2006" "Common Configuration Parser 0.4.1" "User Manuals"
 .SH NAME
 ccp - A program that parses and upgrades configuration files
 
@@ -27,20 +27,18 @@ ccp - A program that parses and upgrades configuration files
 .SH DESCRIPTION
 \fBCCP\fR is a program that reads configuration files and upgrades them.
 
-It takes a oldfile (typically the old configuration file currently in use)
-and a newfile (typically the default new configuration file) and optionally
-a template (a file which tells ccp how the generated configuration file should
-look like. It is generated on-the-fly if a template isn't supplied, so it is
-usually not needed). CCP first reads all the configuration options and values in
-the new file, then in the old file, then it either generates the template or reads
-the supplied template file, finally it merges the files into one - creating a new
-configuration file that has the changes that was made to the old file but also
-the new options that is included in the new file.
+It takes a --oldfile (typically the configuration file you're currently
+using) and a --newfile (typically the default version of the new configuration
+file). CCP first reads all the configuration options and values in
+the new file, then in the old file, then it generates the template (or uses
+the template supplied by the user, if any), finally it merges the files into one
+- creating a new configuration file that has the changes that was made to the
+old file but also the new options that is included in the new file.
 
 CCP is completely independent of the program that created the configuration file,
 and can be used for many different purposes. For instance it can be used to merge
 changes between an old user-edited configuration file and a .rpmnew file generated
-by rpm when a rpm was upgraded.
+by rpm when a rpm package was upgraded.
 
 CCP is an acronym for "Common Configuration Parser".
 
@@ -77,7 +75,7 @@ the --oldfile). Typically this will be if the config file defines its own versio
 in the config file - ofcourse you want that version number to be that of the new file,
 not the old file.
 
-It can also be used to ignore some orphaned options when used with --noorphans.
+It can also be used to ignore some orphaned options when used with --set NoOrphans.
 Or, it can be used to make CCP *not* uncomment some options, but
 uncomment others.
 
@@ -94,6 +92,7 @@ that can be set.
 or a space seperated list of settings like
 .nf
 	--set "NoOrphans NoTemplateUncommenting ParanoidMode"
+.fi
 .TP
 \fB\-f\fR, \fB\-\-outputfile\fR \fI/path\fR
 Write the new (merged) configuration file to this file instead of --oldfile.
@@ -168,8 +167,8 @@ settings named the same (which the program can handle fine, but CCP doesn't).
 CCP may also output even more information than in very verbose mode when running
 in paranoid mode. This implies -v.
 
-If you're uncertain about if a file will work or not in CCP then you should pass
-it a round of --set ParanoidMode and check for warnings.
+If you're uncertain about if a file will work or not in CCP then you should test it
+with --set ParanoidMode and check for warnings.
 .\" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 .SH CONFIGURATION FILETYPES
@@ -179,15 +178,20 @@ Examples:
 .nf
 --type keyvalue
 --type ini
+.fi
 .TP
 \fBkeyvalue\fR (default)
 This filetype is for files in the format
 
+.nf
 key = value
+.fi
 
 and all similar derivatives such as
 
+.nf
 $key = "value";
+.fi
 
 Comments (# ; /** * */) and unrecognized lines are skipped, so it will also work with
 php-source files such as those used in squirrelmail.
@@ -211,10 +215,12 @@ Comments (# ; /** * */) and unrecognized lines are skipped
 .\" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 .SH ABOUT ORPHANED OPTIONS
-Orphaned options are options that is found in the oldfile or newfile but not in
-the template file. These are currently discarded, this can in some cases lead to
-configuration loss. Therefore it is recommended that you either use \fB--backup\fR
-or \fB--noorphans\fR when working on files that can have additional configuration
+Orphaned options are options that is found in the oldfile or newfile but can't
+be found in the template file (meaning CCP couldn't find a commented option
+to uncomment either). These will be discarded by default (THIS DEFAULT WILL
+CHANGE IN 0.5), which can in some cases lead to configuration loss.
+Therefore it is recommended that you either use \fB--backup\fR
+or \fB--set NoOrphans\fR when working on files that can have additional configuration
 options added that is not defined by default if ccp is run on it automatically.
 If ccp is not run automatically then using -vb will do the trick, -v makes sure
 ccp tells you about it and you can restore or check the backup (-b) afterwards.
@@ -227,10 +233,11 @@ orphans will not occur (unless there is a bug in ccp).
 .SH USAGE EXAMPLES
 .TP
 \fBSquirrelMail\fR .rpmnew
-\fB$\fR ccp --delete --ifexists --noorphans --ignoreopt config_version --oldfile /etc/squirrelmail/config.php --newfile /etc/squirrelmail/config.php.rpmnew
+\fB$\fR ccp --delete --ifexists --ignoreopt config_version --set NoOrphans --oldfile /etc/squirrelmail/config.php --newfile /etc/squirrelmail/config.php.rpmnew
+
 
 --delete makes sure the .rpmnew is deleted, --ifexists makes it exit (silently) if the .rpmnew
-does not exist (for use in %post scripts in RPMs), --noorphans makes sure that ccp doesn't
+does not exist (for use in %post scripts in RPMs), --set NoOrphans makes sure that ccp doesn't
 touch the file if the user has uncommented options, --ignoreopt config_version makes sure
 we use the config_version from the .rpmnew and not the old one.
 
