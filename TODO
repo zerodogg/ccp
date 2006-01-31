@@ -9,6 +9,7 @@ TODO for 0.4.1
 - Add the --type to the bug file
 - if (@ARGV =~ /--bug/) { my @BUG_ARGV = @ARGV }; ?
 - Fix manpage coding errors (see the html generated one)
+- Add a warning about "possible confidential info" to --bug
 
 TODO for 0.5
 - - - - - - - -
