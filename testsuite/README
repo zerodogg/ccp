@@ -5,6 +5,9 @@ The purpose of the testsuite is to make sure that CCP doesn't
 break stuff that used to work. It is automated, just run
 ./ccp-testsuite and it will tell you if something breaks.
 
+To get a list of the options that ccp-testsuite reacts to
+run: ./ccp-testsuite --help
+
 Adding tests
 ------------
 It's actually quite simple. Create a directory, that will be the name
@@ -12,3 +15,7 @@ of the test, next put a NEWFILE (--newfile), OLDFILE (--oldfile) and
 DESIRED_OUTPUT (the file CCP should create) and testsuite.conf
 
 See the already existing tests for more info
+
+If you do write an additional test, please feel free to report it
+to the patch tracker at https://savannah.nongnu.org/patch/?group=ccp
+and it will possibly (likely) be added to the main ccp-testsuite.
