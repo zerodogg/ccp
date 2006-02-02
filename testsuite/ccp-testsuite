@@ -25,38 +25,122 @@ use Cwd;                                # Needed for getcwd
 use Getopt::Long;                       # Commandline parsing
 use File::Temp qw/ tempfile /;		# Need a temporary file
 
-my $Version = "0.1";			# Version number
-my $CVSRevision = '$Id$';		# CVS revision
+my $Version = "0.1.1";			# Version number
+my $CVSRevision = '$Id$'; #CVS revision
 my $RootDir = dirname($0);		# The dir containing ccp-testsuite
 my $CCPBin;				# The path to ccp
 my $TestsFailed;			# The number of failed tests
+my $TestsRun;				# The total number of tests run
+my $CommandEnding = '&>/dev/null';	# The ending to the ccp command
 my $Verbose;
-$_ = "@ARGV";
-/-v/ and $Verbose = 1;
+
+Getopt::Long::Configure ("bundling", 'prefix_pattern=(--|-)');
+
+if (-x "$RootDir/../ccp") {
+	$CCPBin = "$RootDir/../ccp";
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Initial helper routines
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Routine that checks wether a specific command is in PATH
+sub InPath {
+        foreach (split /:/, $ENV{PATH}) {
+                if (-x "$_/@_" and ! -d "$_/@_" ) {
+                        return 1;
+                }
+        }
+        return 0;
+}
+# The function that actually outputs the help
+# This is just because I'm too lazy to type the printf every time
+# and this function makes it more practical.
+# Syntax is simply: PrintHelp("shortoption", "longoption", "description")
+sub PrintHelp ($$$) {
+        printf "%-4s %-16s %s\n", "$_[0]", "$_[1]", "$_[2]";
+}
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Parsing of commandline parameters
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+GetOptions (
+	'v|verbose' => \$Verbose,
+	'L|ccpverbosity=s' => sub {
+		$Verbose = 1;
+		if ( $_[1] eq "v" ) {
+			$CommandEnding = "-v";
+		} elsif ( $_[1] eq "V" ) {
+			$CommandEnding = "-V";
+		} elsif ( $_[1] eq "D" ) {
+			$CommandEnding = "-D";
+		} elsif ( $_[1] eq "s" ) {
+			$CommandEnding = "";
+		} else {
+			die "Invalid selection: $_[1]\n";
+		}
+	},
+	'ccp=s' => sub {
+		if ( -x $_[1] and not -d $_[1]) {
+			print "x\n";
+			$CCPBin = $_[1];
+		} elsif (InPath($_[1])) {
+			$CCPBin = $_[1];
+		} else {
+			die "Invalid CCP selection: $_[1]\n";
+		}
+	},
+	'h|help' => sub {
+		print "CCP Testsuite $Version\n\n";
+		print "Run without options to just run the testcases with the default\n";
+		print "CCP.\n\n";
+		print "Optional options:\n";
+		PrintHelp("-v", "--verbose", "Be verbose");
+		PrintHelp("","--ccp", "Specify an alternate CCP (command or path)");
+		PrintHelp("-L", "--ccpverbosity", "Set the CCP verbosity level (v/V/D/s)");
+		PrintHelp("","", "v == --verbose || V == --veryverbose");
+		PrintHelp("","","D = --debug || s = standard/normal/nonverbose");
+		exit 0;
+	}
+) or die "\n";
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Initialization
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 my ($TMPFHandle, $TemporaryFile) = tempfile or die "Failed to create temporary file\n";
 
 print "ccp-testsuite version $Version running\n\n";
 
+# Verbose print
 sub printv ($) {
 	print "$_[0]" if $Verbose;
 }
+# Nonverbose print
+sub printnv ($) {
+	print "$_[0]" unless $Verbose;
+}
 
 # Detect ccp:
-if (-x "$RootDir/../ccp") {
-	$CCPBin = "$RootDir/../ccp";
-} else {
+unless ($CCPBin) {
 	die "Unable to detect where ccp is\n";
 }
 
-# Start the test
+# We need diff
+die "Unable to find diff - make sure it is installed\n" unless InPath("diff");
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# The test itself
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 foreach(<$RootDir/*>) {
 	# If the file isn't a dir or doesn't have testsuite.conf then skip it
 	if (-d $_ and -e "$_/testsuite.conf") {
 		# Declare variables
 		my (
-			$ReturnValue,	$CCPOpts,	$Error
+			$ReturnValue,	$CCPOpts
 		);
-		my $Failed = 0;
+		my $Error = 0;
 		# Display initial message
 		print "Running test: ", basename($_),"...";
 		# We also need the NEWFILE, OLDFILE and DESIRED_OUTPUT files
@@ -78,46 +162,48 @@ foreach(<$RootDir/*>) {
 			}
 			close(CONFIG);
 		}
+		# Increment the counter of the number of tests run.
+		$TestsRun++;
 		# If the temp file already exists, remove it.
 		unlink($TemporaryFile) if -e $TemporaryFile;
-		printv "Running ccp: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null\n";
+		printv "\nRunning ccp: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile $CommandEnding\n";
 		# Run ccp, silently
-		$ReturnValue = system("$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile &>/dev/null");
+		$ReturnValue = system("$CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile $CommandEnding");
 		# If ccp fails, then stop here
 		if ($ReturnValue) {
-			$Failed = 1;
 			$Error = "Nonzero-return-value ($ReturnValue)";
 		} else {	# If not, then continue on with the real test
 			if (-e $TemporaryFile) {
 				# TODO: Don't use diff.
 				if (system("diff -q $TemporaryFile $_/DESIRED_OUTPUT &>/dev/null")) {
-					$Failed = 1;
 					$Error = "Desired_output-and-resulting-output-differ";
 				}
 			} else {
-				$Failed = 1;
 				$Error = "No-output-file-at-all";
 			}
 		}
 			
 		# Did we fail?
-		unless ($Failed) {
+		unless ($Error) {
 			# No :D
-			print "okay :)\n" unless $Verbose;
+			printnv "okay :)\n" unless $Verbose;
+			printv "Test succeeded :)\n";
 		} else {
 			$TestsFailed++;
 			# Yes...
-			print "failed!\n" unless $Verbose;
+			printnv "failed!\n";
+			printv "Test failed!\n";
 			print " Command: $CCPBin $CCPOpts --newfile $_/NEWFILE --oldfile $_/OLDFILE --outputfile $TemporaryFile\n" unless $Verbose;
 			print " ERROR: $Error\n";
 		}
+		printv "\n";
 	}
 }
 unlink($TemporaryFile);
 # Display final statistics
 print "\n";
 if ($TestsFailed) {
-	die "$TestsFailed tests failed\n";
+	die "$TestsFailed of $TestsRun tests failed\n";
 } else {
 	print "All is well - no tests failed :)\n";
 }
