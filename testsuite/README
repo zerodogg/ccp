@@ -15,7 +15,3 @@ of the test, next put a NEWFILE (--newfile), OLDFILE (--oldfile) and
 DESIRED_OUTPUT (the file CCP should create) and testsuite.conf
 
 See the already existing tests for more info
-
-If you do write an additional test, please feel free to report it
-to the patch tracker at https://savannah.nongnu.org/patch/?group=ccp
-and it will possibly (likely) be added to the main ccp-testsuite.

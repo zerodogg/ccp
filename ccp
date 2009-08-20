@@ -320,15 +320,12 @@ GetOptions (
 	# Deprecated/old: 
 	'r|noorphans' => sub {
 		$UserSettings{NoOrphans} = 1;
-		ccpwarn "deprecated commandline option: --noorphans. Use --set NoOprhans\n";
 	},
 	'u|nouncomment|no-uncomment' => sub {
 		$UserSettings{NoUncomment} = 1;
-		ccpwarn "deprecated commandline option: --no-uncomment. Use --set NoUncomment\n";
 	},
 	'P|paranoid' => sub {
 		$UserSettings{ParanoidMode} = 1;
-		ccpwarn "deprecated commandline option: --paranoid. Use --set ParanoidMode\n";
 	},
 ) or die "Run ", basename($0), " --help for more information\n";
 
@@ -357,7 +354,6 @@ LoadConfigType;
 # The default will change in 0.5, this will be removed then and replaced by a
 # cleaner solution
 unless ($UserSettings{NoOrphans} or $UserSettings{AllowOrphans}) {
-	ccpwarn "The default behaviour of CCP will change in the next version.\nSee the ccp manpage SETTINGS->AllowOrphans for more information\n";
 	$UserSettings{AllowOrphans} = 1;
 }
 

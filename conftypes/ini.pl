@@ -248,7 +248,7 @@ sub OutputFile {
 			} else {
 				# BUG!
 				print "\nWARNING: Option found in template but not in oldfile or newfile: $1\n";
-				print "This reflects a bug in CCP! Please report it to http://ccp.nongnu.org/\n";
+				print "This probably reflects a bug in CCP!\n";
 				# Force a backup to be written even if it isn't requested
 				unless ($WriteBackup) {
 					print "Forcing CCP to write a backup file - but still continuing\n";

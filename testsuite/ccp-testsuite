@@ -24,7 +24,6 @@ use Getopt::Long;                       # Commandline parsing
 use File::Temp qw/ tempfile /;		# Need a temporary file
 
 my $Version = "0.1.1";			# Version number
-my $CVSRevision = '$Id$'; #CVS revision
 my $RootDir = dirname($0);		# The dir containing ccp-testsuite
 my $CCPBin;				# The path to ccp
 my $TestsFailed;			# The number of failed tests

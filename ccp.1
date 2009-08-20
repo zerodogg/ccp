@@ -1,20 +1,18 @@
 .\" Manpage for Common Configuration Parser
-.\" $Id$
 .\" Copyright (C) Eskild Hustvedt 2006
 .\"
-.\" This document is free; you can redistribute it and/or
-.\" modify it under the terms of the GNU General Public License
-.\" as published by the Free Software Foundation; either version 2
-.\" of the License, or (at your option) any later version.
+.\" This program is free software: you can redistribute it and/or modify
+.\" it under the terms of the GNU General Public License as published by
+.\" the Free Software Foundation, either version 3 of the License, or
+.\" (at your option) any later version.
 .\"
-.\" This document is distributed in the hope that it will be useful,
+.\" This program is distributed in the hope that it will be useful,
 .\" but WITHOUT ANY WARRANTY; without even the implied warranty of
 .\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 .\" GNU General Public License for more details.
 .\"
 .\" You should have received a copy of the GNU General Public License
-.\" along with this program; if not, write to the Free Software Foundation, Inc.,
-.\" 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+.\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
 .TH CCP 1 "January 2006" "Common Configuration Parser 0.4.1" "User Manuals"
 .SH NAME
 ccp - A program that parses and upgrades configuration files
@@ -150,11 +148,9 @@ more information on orphaned options.
 
 .TP
 \fBAllowOrphans\fR
-\fBDon't\fR exit if orphaned options are detected. From ccp 0.5 (the next version)
-NoOrphans will be default, so you should use this to allow orphans.
-When both AllowOrphans and NoOprhans are set, NoOrphans takes precedence.
-See the section "About orphaned options" below for
-more information on orphaned options.
+\fBDon't\fR exit if orphaned options are detected. When both AllowOrphans and
+NoOprhans are set, NoOrphans takes precedence.  See the section "About orphaned
+options" below for more information on orphaned options.
 
 .TP
 \fBNoTemplateUncommenting\fR
@@ -220,9 +216,9 @@ Comments (# ; /** * */) and unrecognized lines are skipped
 .SH ABOUT ORPHANED OPTIONS
 Orphaned options are options that is found in the oldfile or newfile but can't
 be found in the template file (meaning CCP couldn't find a commented option
-to uncomment either). These will be discarded by default (THIS DEFAULT WILL
-CHANGE IN 0.5), which can in some cases lead to configuration loss.
-Therefore it is recommended that you either use \fB--backup\fR
+to uncomment either). These will be discarded by default, which can in some
+cases lead to configuration loss.  Therefore it is recommended that you either
+use \fB--backup\fR
 or \fB--set NoOrphans\fR when working on files that can have additional configuration
 options added that is not defined by default if ccp is run on it automatically.
 If ccp is not run automatically then using -vb will do the trick, -v makes sure
@@ -281,7 +277,7 @@ is written by Eskild Hustvedt \fI<eskild at mandriva dot org>\fR
 
 .SH BUGS
 There are currently no known bugs with ccp. If you find any bugs, please report them
-to the bug tracker at \fI<http://savannah.nongnu.org/bugs/?group=ccp>\fR
+to the bug tracker at \fI<http://random.zerodogg.org/ccp/bugs>\fR
 
 .\" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
