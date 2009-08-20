@@ -68,6 +68,9 @@ is upgraded successfully.
 If --newfile doesn't exist then exit silently instead of displaying an error message.
 Useful when running in for instance rpm %postin
 .TP
+\fB\-i\fR, \fB\-\-ifnewer\fR
+If --newfile's mtime is older than --oldfile's, ccp will do nothing.
+.TP
 \fB\-g\fR, \fB\-\-ignoreopt\fR \fIname\fR
 Ignore the options supplied when generating templates. That means that the value for
 that option will be kept as it is in the --newfile (ie. not replaced by the value set in
